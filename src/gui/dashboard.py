@@ -212,9 +212,11 @@ def analyze_asset(symbol, interval='5m', use_binomo_fallback=False):
         data_confidence = price_data['confidence']
         sources_used = price_data['sources_used']
         
+        # Obtener ticker para info adicional (volumen, cambios)
+        ticker = hybrid_source.get_realtime_ticker(symbol)
+        
         # Fallback al ticker si no hay datos agregados
         if current_price is None or current_price == 0:
-            ticker = hybrid_source.get_realtime_ticker(symbol)
             current_price = ticker.get('price', df['Close'].iloc[-1])
             data_quality = 'Unknown'
             data_confidence = 0.5
