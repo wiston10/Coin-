@@ -1,0 +1,3 @@
+"""
+Módulo de indicadores técnicos
+"""
