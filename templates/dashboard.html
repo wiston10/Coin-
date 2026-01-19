@@ -389,7 +389,9 @@
         <p class="subtitle">Análisis automático con señales de compra/venta</p>
     </div>
 
-    <div class="controls">
+    <div style="display: flex; gap: 30px; align-items: flex-start;">
+        <div style="flex: 1;">
+            <div class="controls">
         <div class="control-group">
             <label for="categorySelect">📂 Categoría</label>
             <select id="categorySelect" onchange="onCategoryChange()">
@@ -443,11 +445,16 @@
 
     <div class="timestamp" id="timestamp"></div>
 
+    <!-- Botón flotante para Trading Automático -->
+    <a href="/trade" style="position: fixed; bottom: 30px; right: 30px; background: linear-gradient(45deg, #ff6b9d, #c66cd4); color: white; padding: 18px 28px; border-radius: 50px; text-decoration: none; font-weight: 700; font-size: 1.1em; box-shadow: 0 6px 25px rgba(255,107,157,0.5); z-index: 1000; display: flex; align-items: center; gap: 10px; transition: all 0.3s;">
+        🤖 Trading Automático
+    </a>
+
     <script>
         let autoRefresh = true;
         let refreshInterval = null;
-        const REFRESH_RATE = 5000; // 5 segundos
-        let monitoredAssets = new Set(); // Track monitored assets
+        const REFRESH_RATE = 5000;
+        let monitoredAssets = new Set();
 
         function formatPrice(price) {
             return '$' + price.toLocaleString('en-US', {
@@ -561,6 +568,16 @@
             const reasonsList = asset.reasons && asset.reasons.length > 0 
                 ? asset.reasons.slice(0, 3).map(r => `<li>${r}</li>`).join('')
                 : '<li>Sin razones específicas</li>';
+
+            // Frase de acción destacada si señal activa y monitoreo
+            let actionPhrase = '';
+            if (monitoredAssets.has(asset.symbol) && asset.confidence >= 60 && asset.signal !== 'HOLD') {
+                if (asset.signal === 'BUY') {
+                    actionPhrase = `<div style="background:linear-gradient(90deg,#4ade80,#a7f3d0);color:#065f46;font-size:1.25em;font-weight:800;text-align:center;padding:14px 8px 12px 8px;border-radius:10px;margin-bottom:12px;letter-spacing:1px;box-shadow:0 2px 12px #4ade8033;">🚀 ENTRA A COMPRAR EN EL PRÓXIMO MINUTO</div>`;
+                } else if (asset.signal === 'SELL') {
+                    actionPhrase = `<div style="background:linear-gradient(90deg,#f87171,#fca5a5);color:#7f1d1d;font-size:1.25em;font-weight:800;text-align:center;padding:14px 8px 12px 8px;border-radius:10px;margin-bottom:12px;letter-spacing:1px;box-shadow:0 2px 12px #f8717133;">⚡ ENTRA A VENDER EN EL PRÓXIMO MINUTO</div>`;
+                }
+            }
             
             // Determinar emoji y color del patrón
             const getPatternInfo = (pattern) => {
@@ -582,6 +599,7 @@
             
             return `
                 <div class="card">
+                    ${actionPhrase}
                     <div class="card-header">
                         <div>
                             <div class="asset-name">${asset.name}</div>
@@ -704,6 +722,65 @@
                         <div style="font-size: 0.85em; opacity: 0.9;">${asset.psychology_desc}</div>
                     </div>
                     
+                    ${asset.timing ? `
+                    <div style="margin: 15px 0; padding: 12px; background: ${
+                        asset.timing.is_optimal ? 'rgba(34, 197, 94, 0.15)' : 
+                        asset.timing.should_avoid ? 'rgba(239, 68, 68, 0.15)' : 
+                        'rgba(234, 179, 8, 0.15)'
+                    }; border-radius: 8px; border-left: 4px solid ${
+                        asset.timing.is_optimal ? '#4ade80' : 
+                        asset.timing.should_avoid ? '#f87171' : 
+                        '#fbbf24'
+                    };">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <div style="font-size: 0.9em; color: #c084fc;">⏰ Horario de Trading</div>
+                            <div style="font-size: 1.3em;">${asset.timing.timing_emoji || '🟡'}</div>
+                        </div>
+                        <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 5px; color: ${
+                            asset.timing.is_optimal ? '#4ade80' : 
+                            asset.timing.should_avoid ? '#f87171' : 
+                            '#fbbf24'
+                        };">
+                            ${asset.timing.timing_label || 'Horario Regular'}
+                        </div>
+                        <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 5px;">
+                            ${asset.timing.description || ''}
+                        </div>
+                        ${asset.timing.next_optimal ? `
+                        <div style="font-size: 0.8em; background: rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 5px; margin-top: 8px;">
+                            🕐 <strong>Próxima ventana óptima:</strong> ${asset.timing.next_optimal}
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+                    
+                    ${asset.market_sentiment ? `
+                    <div style="margin: 15px 0; padding: 12px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; border-left: 4px solid #8b5cf6;">
+                        <div style="font-size: 0.9em; color: #c084fc; margin-bottom: 8px;">📊 Sentimiento del Mercado Crypto</div>
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 8px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.8em; font-weight: 700; color: ${
+                                    asset.market_sentiment.score >= 70 ? '#4ade80' :
+                                    asset.market_sentiment.score >= 50 ? '#fbbf24' :
+                                    asset.market_sentiment.score >= 30 ? '#fb923c' : '#f87171'
+                                };">${asset.market_sentiment.score}</div>
+                                <div style="font-size: 0.7em; opacity: 0.8;">Fear & Greed</div>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; margin-bottom: 3px;">
+                                    ${asset.market_sentiment.fear_greed_label || 'Neutral'}
+                                </div>
+                                <div style="font-size: 0.85em; opacity: 0.9;">
+                                    ${asset.market_sentiment.recommendation || ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                            <div style="height: 100%; width: ${asset.market_sentiment.score}%; background: linear-gradient(90deg, #f87171, #fbbf24, #4ade80); transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
                     <div style="margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
                         <div style="font-size: 0.9em; color: #c084fc; margin-bottom: 8px;">📝 Razones de la Señal</div>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.85em; line-height: 1.6;">
@@ -738,18 +815,16 @@
             const interval = document.getElementById('intervalSelect').value;
             const category = document.getElementById('categorySelect').value;
             
-            // Mostrar indicador de actualización
+            // Indicador sutil en la barra de estado
             document.getElementById('statusValue').classList.add('updating');
             
             try {
                 let response, data;
                 
                 if (category === 'all') {
-                    // Obtener mix de activos predeterminados
                     response = await fetch(`/api/analyze-all?interval=${interval}`);
                     data = await response.json();
                 } else {
-                    // Obtener activos de categoría específica
                     response = await fetch(`/api/analyze-category/${category}?interval=${interval}`);
                     data = await response.json();
                 }
@@ -771,12 +846,9 @@
                         now.toLocaleTimeString('es-ES');
                     document.getElementById('timestamp').textContent = 
                         `Última actualización: ${now.toLocaleString('es-ES')}`;
-                } else {
-                    dashboard.innerHTML = '<div class="error">❌ No se pudieron obtener datos</div>';
                 }
             } catch (error) {
                 console.error('Error:', error);
-                dashboard.innerHTML = '<div class="error">❌ Error al conectar con el servidor</div>';
             }
             
             document.getElementById('statusValue').classList.remove('updating');

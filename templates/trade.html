@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Automático - Sistema de Trading</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/css/autoComplete.02.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a0033 0%, #330066 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container { width: 100%; max-width: 500px; }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #c084fc;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        .back-btn:hover { color: #ff6b9d; transform: translateX(-5px); }
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 40px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card h1 {
+            font-size: 1.8em;
+            text-align: center;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b9d, #c66cd4, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .card .subtitle { text-align: center; color: #a78bfa; margin-bottom: 30px; font-size: 0.95em; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #c084fc; font-weight: 600; font-size: 0.95em; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #c084fc; background: rgba(255, 255, 255, 0.1); }
+        .form-group input::placeholder { color: rgba(255, 255, 255, 0.4); }
+        .form-group select option { background: #330066; color: white; }
+        .row { display: flex; gap: 15px; }
+        .row .form-group { flex: 1; }
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(45deg, #ff6b9d, #c66cd4);
+            color: white;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(255, 107, 157, 0.5); }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .result { margin-top: 25px; padding: 20px; border-radius: 12px; display: none; }
+        .result.success { display: block; background: rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; }
+        .result.error { display: block; background: rgba(248, 113, 113, 0.15); border: 1px solid #f87171; }
+        .result.loading { display: block; background: rgba(96, 165, 250, 0.15); border: 1px solid #60a5fa; text-align: center; }
+        .result h3 { margin-bottom: 10px; font-size: 1.1em; }
+        .result pre { background: rgba(0, 0, 0, 0.2); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 0.85em; margin-top: 10px; }
+        .validation-msg { color: #fbbf24; font-size: 0.9em; margin-top: 5px; }
+        .autoComplete_wrapper { width: 100%; }
+        .autoComplete_wrapper > input { width: 100%; padding: 14px 16px; border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 12px; background: rgba(255, 255, 255, 0.05); color: white; font-size: 1em; }
+        .autoComplete_wrapper > input:focus { outline: none; border-color: #c084fc; background: rgba(255, 255, 255, 0.1); }
+        .autoComplete_wrapper > ul { background: #1a0033; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; max-height: 200px; overflow-y: auto; }
+        .autoComplete_wrapper > ul > li { padding: 12px 16px; color: white; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        .autoComplete_wrapper > ul > li:hover { background: rgba(192, 132, 252, 0.3); }
+        .autoComplete_wrapper > ul > li mark { background: transparent; color: #ff6b9d; font-weight: 700; }
+        .info-box { background: rgba(139, 92, 246, 0.15); border: 1px solid #8b5cf6; border-radius: 10px; padding: 15px; margin-bottom: 25px; font-size: 0.9em; line-height: 1.5; }
+        .info-box strong { color: #c084fc; }
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 10px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 500px) { .card { padding: 25px; } .row { flex-direction: column; gap: 0; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">← Volver al Dashboard</a>
+        <div class="card">
+            <h1>🤖 Trading Automático</h1>
+            <p class="subtitle">Ejecuta trades basados en análisis de señales</p>
+            <div class="info-box">
+                <strong>ℹ️ ¿Cómo funciona?</strong><br>
+                El sistema analiza el activo seleccionado, detecta señales de compra/venta y ejecuta automáticamente el trade en tu plataforma.
+            </div>
+            <form id="tradeForm" autocomplete="off">
+                <div class="form-group">
+                    <label>📧 Usuario (Email)</label>
+                    <input type="email" id="email" placeholder="tu@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label>🔒 Contraseña</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+                <div class="form-group">
+                    <label>🏦 Exchange / Broker</label>
+                    <select id="platform" required>
+                        <option value="">Selecciona una plataforma</option>
+                        <optgroup label="Opciones Binarias">
+                            <option value="binomo">Binomo</option>
+                            <option value="iqoption">IQ Option</option>
+                            <option value="quotex">Quotex</option>
+                            <option value="olymptrade">Olymp Trade</option>
+                            <option value="pocket">Pocket Option</option>
+                        </optgroup>
+                        <optgroup label="Exchanges Crypto">
+                            <option value="binance">Binance</option>
+                            <option value="bybit">Bybit</option>
+                            <option value="kucoin">KuCoin</option>
+                            <option value="okx">OKX</option>
+                            <option value="kraken">Kraken</option>
+                            <option value="coinbase">Coinbase Advanced</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="form-group">
+                        <label>📂 Categoría</label>
+                        <select id="category">
+                            <option value="crypto">🪙 Cripto</option>
+                            <option value="stocks">📈 Acciones</option>
+                            <option value="forex">💱 Forex</option>
+                            <option value="indices">📊 Índices</option>
+                            <option value="commodities">🥇 Commodities</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>⏱️ Intervalo</label>
+                        <select id="interval">
+                            <option value="1m">1 minuto</option>
+                            <option value="5m" selected>5 minutos</option>
+                            <option value="15m">15 minutos</option>
+                            <option value="30m">30 minutos</option>
+                            <option value="1h">1 hora</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>💎 Activo</label>
+                    <input type="text" id="symbol" placeholder="Escribe para buscar..." required autocomplete="off">
+                </div>
+                <div id="validationMsg" class="validation-msg"></div>
+                <button type="submit" class="submit-btn" id="submitBtn">🚀 Ejecutar Trade Automático</button>
+            </form>
+            <div id="result" class="result"></div>
+        </div>
+    </div>
+    <script>
+        let assetsByCategory = {};
+        let currentCategory = 'crypto';
+        fetch('/api/categories').then(r => r.json()).then(data => { assetsByCategory = data.categories; setupAutocomplete(currentCategory); }).catch(err => console.error('Error:', err));
+        document.getElementById('category').onchange = function() { currentCategory = this.value; document.getElementById('symbol').value = ''; setupAutocomplete(currentCategory); };
+        function setupAutocomplete(category) {
+            const assets = assetsByCategory[category] || [];
+            const assetList = assets.map(a => a.symbol + ' - ' + a.name);
+            if (window.autoCompleteInstance) window.autoCompleteInstance.unInit();
+            window.autoCompleteInstance = new autoComplete({ selector: "#symbol", placeHolder: "Escribe para buscar activo...", data: { src: assetList }, resultItem: { highlight: true }, events: { input: { selection: (event) => { document.getElementById('symbol').value = event.detail.selection.value.split(' - ')[0]; } } } });
+        }
+        document.getElementById('tradeForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const platform = document.getElementById('platform').value;
+            const symbol = document.getElementById('symbol').value.trim().split(' - ')[0];
+            const interval = document.getElementById('interval').value;
+            const resultDiv = document.getElementById('result');
+            const validationMsg = document.getElementById('validationMsg');
+            const submitBtn = document.getElementById('submitBtn');
+            validationMsg.textContent = '';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '';
+            if (!email || !password || !platform || !symbol) { validationMsg.textContent = '⚠️ Todos los campos son obligatorios.'; return; }
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { validationMsg.textContent = '⚠️ El email no es válido.'; return; }
+            if (password.length < 4) { validationMsg.textContent = '⚠️ La contraseña debe tener al menos 4 caracteres.'; return; }
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span> Procesando...';
+            resultDiv.className = 'result loading';
+            resultDiv.innerHTML = '<span class="spinner"></span> Analizando mercado y ejecutando trade...';
+            try {
+                const res = await fetch('/api/trade', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, platform, symbol, interval }) });
+                const data = await res.json();
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = '<h3>✅ Trade Ejecutado Exitosamente</h3><p><strong>Señal:</strong> ' + (data.trade_result?.signal || 'N/A') + '</p><p><strong>Precio:</strong> ' + (data.trade_result?.price || 'N/A') + '</p><p><strong>Confianza:</strong> ' + (data.trade_result?.confidence || 'N/A') + '%</p><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    let errorMsg = data.error || 'No se pudo ejecutar el trade.';
+                    if (errorMsg.toLowerCase().includes('login')) errorMsg += ' (Verifica usuario y contraseña)';
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = '<h3>❌ Error</h3><p>' + errorMsg + '</p>';
+                }
+            } catch (err) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<h3>❌ Error de Conexión</h3><p>No se pudo conectar con el servidor.</p>';
+            }
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '🚀 Ejecutar Trade Automático';
+        };
+    </script>
+</body>
+</html>

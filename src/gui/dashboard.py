@@ -5,14 +5,17 @@ Muestra análisis de múltiples activos con actualización automática
 """
 
 from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect
 from flask_cors import CORS
+
+
+
 import threading
 import time
 from datetime import datetime
 import json
 import pandas as pd
 import numpy as np
-import os
 from pathlib import Path
 
 from src.data_sources.hybrid_data_source import HybridDataSource
@@ -20,6 +23,18 @@ from src.indicators.technical_indicators import calculate_adaptive_indicators
 from src.strategies.bounce_strategy import analyze_bounce_opportunity
 from src.core.trading_signals import TradingSignalEngine
 from src.webhooks.webhook_notifier import WebhookNotifier
+
+# Importar fuentes extendidas
+try:
+    from src.data_sources.extended_sources import (
+        extended_sources, 
+        get_optimal_trading_info, 
+        get_market_sentiment
+    )
+    EXTENDED_SOURCES_AVAILABLE = True
+except ImportError:
+    EXTENDED_SOURCES_AVAILABLE = False
+    print("⚠️ Fuentes extendidas no disponibles")
 
 # Configurar rutas para templates
 base_dir = Path(__file__).parent.parent.parent
@@ -329,8 +344,44 @@ def analyze_asset(symbol, interval='5m', use_binomo_fallback=False):
             'reasons': bounce_result.get('reasons', [])
         }
         
+        # ✨ NUEVO: Agregar análisis de horarios óptimos y sentimiento
+        if EXTENDED_SOURCES_AVAILABLE:
+            try:
+                # Horarios óptimos de trading
+                timing_info = get_optimal_trading_info(asset_type)
+                result['timing'] = {
+                    'is_optimal': timing_info.get('is_optimal_time', False),
+                    'should_avoid': timing_info.get('should_avoid', False),
+                    'timing_score': timing_info.get('timing_score', 50),
+                    'timing_emoji': timing_info.get('timing_emoji', '🟡'),
+                    'timing_label': timing_info.get('timing_label', 'Regular'),
+                    'next_optimal': timing_info.get('next_optimal_window', ''),
+                    'description': timing_info.get('market_description', '')
+                }
+                
+                # Sentimiento del mercado (solo para crypto con Fear & Greed)
+                if asset_type == 'crypto':
+                    sentiment_info = get_market_sentiment(symbol, asset_type)
+                    if sentiment_info:
+                        result['market_sentiment'] = {
+                            'sentiment': sentiment_info.get('sentiment', 'NEUTRAL'),
+                            'score': sentiment_info.get('sentiment_score', 50),
+                            'recommendation': sentiment_info.get('recommendation', ''),
+                            'fear_greed_value': sentiment_info.get('fear_greed', {}).get('value', 50),
+                            'fear_greed_label': sentiment_info.get('fear_greed', {}).get('classification', 'Neutral')
+                        }
+            except Exception as e:
+                print(f"⚠️ Error obteniendo datos extendidos: {e}")
+        
         # Enviar webhook si hay señal de compra/venta con alta confianza
         if result['signal'] in ['BUY', 'SELL'] and result['confidence'] >= webhook_notifier.min_confidence:
+            # Frase de acción destacada
+            if result['signal'] == 'BUY':
+                action_phrase = '🚀 ENTRA A COMPRAR EN EL PRÓXIMO MINUTO';
+            elif result['signal'] == 'SELL':
+                action_phrase = '⚡ ENTRA A VENDER EN EL PRÓXIMO MINUTO';
+            else:
+                action_phrase = ''
             webhook_data = {
                 'symbol': result['symbol'],
                 'signal': result['signal'],
@@ -341,9 +392,9 @@ def analyze_asset(symbol, interval='5m', use_binomo_fallback=False):
                 'interval': result['interval'],
                 'support_levels': result['key_levels']['support'],
                 'resistance_levels': result['key_levels']['resistance'],
-                'reasons': result['reasons']
+                'reasons': result['reasons'],
+                'action_phrase': action_phrase
             }
-            
             # Enviar en segundo plano para no bloquear
             threading.Thread(
                 target=webhook_notifier.send_signal,
@@ -384,6 +435,46 @@ def index():
     return render_template('dashboard.html')
 
 
+# NUEVA PÁGINA: Interfaz de trading automático
+@app.route('/trade')
+def trade_page():
+    """Página para login, selección de exchange y ejecución de trade"""
+    return render_template('trade.html')
+from src.trading.web_trader_bot import WebTraderBot
+# Endpoint para ejecutar trade automático desde la interfaz
+@app.route('/api/trade', methods=['POST'])
+def api_trade():
+    data = request.json
+    email = data.get('email')
+    password = data.get('password')
+    platform = data.get('platform')
+    symbol = data.get('symbol')
+    interval = data.get('interval', '5m')
+
+    # Validar datos
+    if not all([email, password, platform, symbol]):
+        return jsonify({'success': False, 'error': 'Faltan datos'}), 400
+
+    # Analizar activo
+    analysis = analyze_asset(symbol, interval)
+    if not analysis:
+        return jsonify({'success': False, 'error': 'No se pudo analizar el activo'}), 500
+
+    # Ejecutar trade con el bot
+    try:
+        bot = WebTraderBot(platform=platform, headless=True)
+        login_ok = bot.login(email, password)
+        if not login_ok:
+            bot.close()
+            return jsonify({'success': False, 'error': 'Login fallido'}), 401
+        result = bot.execute_trade_with_analysis(analysis)
+        stats = bot.get_statistics()
+        bot.close()
+        return jsonify({'success': True, 'trade_result': result, 'stats': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/assets')
 def get_assets():
     """Obtiene lista de activos disponibles"""
@@ -404,49 +495,57 @@ def get_categories():
 
 @app.route('/api/analyze-category/<category>')
 def analyze_category(category):
-    """Analiza todos los activos de una categoría con rate limiting"""
+    """Analiza todos los activos de una categoría con rate limiting y manejo de errores"""
     import time
-    
+    import traceback
+    import logging
+    start_time = time.time()
     interval = request.args.get('interval', '5m')
-    
-    if category not in ASSET_CATEGORIES:
-        return jsonify({'error': 'Categoría no válida'}), 400
-    
-    results = []
-    
-    # Procesar en lotes pequeños con delay para evitar rate limiting
-    for i, asset in enumerate(ASSET_CATEGORIES[category]):
-        result = get_cached_data(asset['symbol'], interval)
-        if result:
-            result['name'] = asset['name']
-            result['category'] = category
-            results.append(result)
-        
-        # Delay entre activos si no está en caché (especialmente para forex/stocks)
-        if i < len(ASSET_CATEGORIES[category]) - 1 and not result:
-            time.sleep(0.3)  # 300ms delay entre requests fallidos
-    
-    return jsonify({
-        'category': category,
-        'assets': results,
-        'total': len(ASSET_CATEGORIES[category]),
-        'loaded': len(results),
-        'timestamp': datetime.now().isoformat()
-    })
+    try:
+        if category not in ASSET_CATEGORIES:
+            return jsonify({'error': 'Categoría no válida'}), 400
+        results = []
+        for i, asset in enumerate(ASSET_CATEGORIES[category]):
+            try:
+                result = get_cached_data(asset['symbol'], interval)
+                if result:
+                    result['name'] = asset['name']
+                    result['category'] = category
+                    results.append(result)
+            except Exception as e:
+                logging.error(f"Error analizando {asset['symbol']}: {e}\n{traceback.format_exc()}")
+            if i < len(ASSET_CATEGORIES[category]) - 1 and not (result if 'result' in locals() else None):
+                time.sleep(0.3)
+        elapsed = round(time.time() - start_time, 2)
+        return jsonify({
+            'category': category,
+            'assets': results,
+            'total': len(ASSET_CATEGORIES[category]),
+            'loaded': len(results),
+            'timestamp': datetime.now().isoformat(),
+            'elapsed': elapsed
+        })
+    except Exception as e:
+        logging.error(f"Error en analyze_category: {e}\n{traceback.format_exc()}")
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
 
 
 @app.route('/api/analyze/<symbol>')
 def analyze(symbol):
-    """Analiza un activo específico"""
+    """Analiza un activo específico con manejo de errores"""
+    import traceback
+    import logging
     interval = request.args.get('interval', '5m')
     use_binomo = request.args.get('binomo', 'false').lower() == 'true'
-    
-    result = get_cached_data(symbol, interval, use_binomo_fallback=use_binomo)
-    
-    if result:
-        return jsonify(result)
-    else:
-        return jsonify({'error': 'No se pudieron obtener datos'}), 500
+    try:
+        result = get_cached_data(symbol, interval, use_binomo_fallback=use_binomo)
+        if result:
+            return jsonify(result)
+        else:
+            return jsonify({'error': 'No se pudieron obtener datos'}), 500
+    except Exception as e:
+        logging.error(f"Error en analyze({symbol}): {e}\n{traceback.format_exc()}")
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
 
 
 @app.route('/api/compare-sources/<symbol>')
@@ -468,20 +567,31 @@ def compare_sources_endpoint(symbol):
 
 @app.route('/api/analyze-all')
 def analyze_all():
-    """Analiza todos los activos configurados"""
+    """Analiza todos los activos configurados con manejo de errores"""
+    import traceback
+    import logging
+    import time
+    start_time = time.time()
     interval = request.args.get('interval', '5m')
-    
-    results = []
-    for asset in DEFAULT_ASSETS:
-        result = get_cached_data(asset['symbol'], interval)
-        if result:
-            result['name'] = asset['name']
-            results.append(result)
-    
-    return jsonify({
-        'assets': results,
-        'timestamp': datetime.now().isoformat()
-    })
+    try:
+        results = []
+        for asset in DEFAULT_ASSETS:
+            try:
+                result = get_cached_data(asset['symbol'], interval)
+                if result:
+                    result['name'] = asset['name']
+                    results.append(result)
+            except Exception as e:
+                logging.error(f"Error analizando {asset['symbol']}: {e}\n{traceback.format_exc()}")
+        elapsed = round(time.time() - start_time, 2)
+        return jsonify({
+            'assets': results,
+            'timestamp': datetime.now().isoformat(),
+            'elapsed': elapsed
+        })
+    except Exception as e:
+        logging.error(f"Error en analyze_all: {e}\n{traceback.format_exc()}")
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
 
 
 @app.route('/api/multi-timeframe/<symbol>')

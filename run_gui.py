@@ -6,11 +6,21 @@ Script de inicio rápido para el Dashboard Web con Multi-Broker
 import sys
 from pathlib import Path
 
+print("🔧 Iniciando run_gui.py...", flush=True)
+
 # Agregar src al path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from src.gui.dashboard import app
-from src.data_sources.hybrid_data_source import HybridDataSource
+print("📦 Importando módulos...", flush=True)
+try:
+    from src.gui.dashboard import app
+    from src.data_sources.hybrid_data_source import HybridDataSource
+    print("✅ Módulos importados correctamente", flush=True)
+except Exception as e:
+    print(f"❌ Error al importar módulos: {e}", flush=True)
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
 
 def show_multibroker_status():
     """Muestra el estado del sistema multi-broker"""
