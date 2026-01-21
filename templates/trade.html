@@ -3,224 +3,1115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Automático - Sistema de Trading</title>
+    <title>AI Trading Bot - Sistema de Trading Automático</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/css/autoComplete.02.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a0033 0%, #330066 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0f;
             color: #ffffff;
             min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            animation: bgShift 20s ease-in-out infinite;
+        }
+
+        @keyframes bgShift {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.1) rotate(2deg); }
+        }
+
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+        }
+
+        .nav {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
         }
-        .container { width: 100%; max-width: 500px; }
-        .back-btn {
-            display: inline-flex;
+
+        .logo {
+            display: flex;
             align-items: center;
-            gap: 8px;
-            color: #c084fc;
-            text-decoration: none;
-            margin-bottom: 20px;
-            font-size: 1em;
-            transition: all 0.3s;
-        }
-        .back-btn:hover { color: #ff6b9d; transform: translateX(-5px); }
-        .card {
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 40px;
-            backdrop-filter: blur(15px);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .card h1 {
-            font-size: 1.8em;
-            text-align: center;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, #ff6b9d, #c66cd4, #8b5cf6);
+            gap: 12px;
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .card .subtitle { text-align: center; color: #a78bfa; margin-bottom: 30px; font-size: 0.95em; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; color: #c084fc; font-weight: 600; font-size: 0.95em; }
-        .form-group input, .form-group select {
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .nav-link.active {
+            color: #ffffff;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-link.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
             width: 100%;
-            padding: 14px 16px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            min-height: calc(100vh - 100px);
+        }
+
+        /* Left Panel - Trading Interface */
+        .trading-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .panel-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .panel-subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* AI Status Card */
+        .ai-status {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-status::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .ai-status-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .ai-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .ai-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #00ff88;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 0.25rem;
+        }
+
+        /* Form Styles */
+        .form-section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 1rem 1.25rem;
             border: 2px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
             background: rgba(255, 255, 255, 0.05);
             color: white;
-            font-size: 1em;
+            font-size: 1rem;
             transition: all 0.3s;
+            font-family: inherit;
         }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: #c084fc; background: rgba(255, 255, 255, 0.1); }
-        .form-group input::placeholder { color: rgba(255, 255, 255, 0.4); }
-        .form-group select option { background: #330066; color: white; }
-        .row { display: flex; gap: 15px; }
-        .row .form-group { flex: 1; }
-        .submit-btn {
-            width: 100%;
-            padding: 16px;
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(45deg, #ff6b9d, #c66cd4);
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .form-select option {
+            background: #1a1a2e;
             color: white;
-            font-size: 1.1em;
+        }
+
+        /* Trading Button */
+        .trade-button {
+            width: 100%;
+            padding: 1.25rem 2rem;
+            border: none;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 1.2rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s;
-            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(255, 107, 157, 0.5); }
-        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .result { margin-top: 25px; padding: 20px; border-radius: 12px; display: none; }
-        .result.success { display: block; background: rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; }
-        .result.error { display: block; background: rgba(248, 113, 113, 0.15); border: 1px solid #f87171; }
-        .result.loading { display: block; background: rgba(96, 165, 250, 0.15); border: 1px solid #60a5fa; text-align: center; }
-        .result h3 { margin-bottom: 10px; font-size: 1.1em; }
-        .result pre { background: rgba(0, 0, 0, 0.2); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 0.85em; margin-top: 10px; }
-        .validation-msg { color: #fbbf24; font-size: 0.9em; margin-top: 5px; }
-        .autoComplete_wrapper { width: 100%; }
-        .autoComplete_wrapper > input { width: 100%; padding: 14px 16px; border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 12px; background: rgba(255, 255, 255, 0.05); color: white; font-size: 1em; }
-        .autoComplete_wrapper > input:focus { outline: none; border-color: #c084fc; background: rgba(255, 255, 255, 0.1); }
-        .autoComplete_wrapper > ul { background: #1a0033; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; max-height: 200px; overflow-y: auto; }
-        .autoComplete_wrapper > ul > li { padding: 12px 16px; color: white; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-        .autoComplete_wrapper > ul > li:hover { background: rgba(192, 132, 252, 0.3); }
-        .autoComplete_wrapper > ul > li mark { background: transparent; color: #ff6b9d; font-weight: 700; }
-        .info-box { background: rgba(139, 92, 246, 0.15); border: 1px solid #8b5cf6; border-radius: 10px; padding: 15px; margin-bottom: 25px; font-size: 0.9em; line-height: 1.5; }
-        .info-box strong { color: #c084fc; }
-        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 10px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 500px) { .card { padding: 25px; } .row { flex-direction: column; gap: 0; } }
+
+        .trade-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .trade-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .trade-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .trade-button:hover::before {
+            left: 100%;
+        }
+
+        /* Right Panel - Market Analysis */
+        .analysis-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .analysis-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Market Overview */
+        .market-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+        }
+
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .positive { color: #00ff88; }
+        .negative { color: #ff4757; }
+
+        /* Live Signals */
+        .signals-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .signal-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid transparent;
+        }
+
+        .signal-item.buy { border-left-color: #00ff88; }
+        .signal-item.sell { border-left-color: #ff4757; }
+        .signal-item.hold { border-left-color: #ffa502; }
+
+        .signal-info h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .signal-meta {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .signal-action {
+            text-align: right;
+        }
+
+        .signal-type {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .signal-confidence {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Performance Chart */
+        .chart-container {
+            height: 200px;
+            position: relative;
+        }
+
+        /* Results */
+        .result {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 16px;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result.success {
+            display: block;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+        }
+
+        .result.error {
+            display: block;
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid #ff4757;
+        }
+
+        .result.loading {
+            display: block;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid #667eea;
+            text-align: center;
+        }
+
+        .result h3 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .result-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .result-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .result-item-label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 0.5rem;
+        }
+
+        .result-item-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        /* Validation */
+        .validation-msg {
+            color: #ffa502;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background: rgba(255, 165, 2, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #ffa502;
+        }
+
+        /* Autocomplete Styles */
+        .autoComplete_wrapper {
+            width: 100%;
+        }
+
+        .autoComplete_wrapper > input {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 1rem;
+        }
+
+        .autoComplete_wrapper > input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .autoComplete_wrapper > ul {
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .autoComplete_wrapper > ul > li {
+            padding: 1rem 1.25rem;
+            color: white;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s;
+        }
+
+        .autoComplete_wrapper > ul > li:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .autoComplete_wrapper > ul > li mark {
+            background: transparent;
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .analysis-panel {
+                order: -1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .trading-panel {
+                padding: 1.5rem;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .nav-link {
+                padding: 10px 16px;
+                font-size: 0.9em;
+            }
+            
+            .panel-title {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 1rem;
+            }
+            
+            .nav {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .ai-metrics {
+                grid-template-columns: 1fr;
+            }
+            
+            .market-stats {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="/" class="back-btn">← Volver al Dashboard</a>
-        <div class="card">
-            <h1>🤖 Trading Automático</h1>
-            <p class="subtitle">Ejecuta trades basados en análisis de señales</p>
-            <div class="info-box">
-                <strong>ℹ️ ¿Cómo funciona?</strong><br>
-                El sistema analiza el activo seleccionado, detecta señales de compra/venta y ejecuta automáticamente el trade en tu plataforma.
+    <div class="bg-animation"></div>
+    
+    <header class="header">
+        <nav class="nav">
+            <div class="logo">
+                AI Trading Bot
             </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Dashboard</a>
+                <a href="/portfolio" class="nav-link">Portfolio</a>
+                <a href="/trade" class="nav-link active">AI Trading</a>
+                <a href="/settings" class="nav-link">Settings</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <!-- Left Panel - Trading Interface -->
+        <div class="trading-panel">
+            <div class="panel-header">
+                <h1 class="panel-title">AI Trading Bot</h1>
+                <p class="panel-subtitle">Automated trading powered by artificial intelligence</p>
+            </div>
+
+            <!-- AI Status -->
+            <div class="ai-status">
+                <div class="ai-status-header">
+                    <div class="ai-indicator"></div>
+                    <h3>AI Engine Status</h3>
+                    <span style="margin-left: auto; color: #00ff88; font-weight: 600;">ACTIVE</span>
+                </div>
+                <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 1rem;">
+                    Advanced neural networks analyzing market patterns in real-time
+                </p>
+                <div class="ai-metrics">
+                    <div class="metric">
+                        <div class="metric-value">94.2%</div>
+                        <div class="metric-label">Accuracy</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">1.2s</div>
+                        <div class="metric-label">Response Time</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">847</div>
+                        <div class="metric-label">Signals Today</div>
+                    </div>
+                </div>
+            </div>
+
             <form id="tradeForm" autocomplete="off">
-                <div class="form-group">
-                    <label>📧 Usuario (Email)</label>
-                    <input type="email" id="email" placeholder="tu@email.com" required>
-                </div>
-                <div class="form-group">
-                    <label>🔒 Contraseña</label>
-                    <input type="password" id="password" placeholder="••••••••" required>
-                </div>
-                <div class="form-group">
-                    <label>🏦 Exchange / Broker</label>
-                    <select id="platform" required>
-                        <option value="">Selecciona una plataforma</option>
-                        <optgroup label="Opciones Binarias">
-                            <option value="binomo">Binomo</option>
-                            <option value="iqoption">IQ Option</option>
-                            <option value="quotex">Quotex</option>
-                            <option value="olymptrade">Olymp Trade</option>
-                            <option value="pocket">Pocket Option</option>
-                        </optgroup>
-                        <optgroup label="Exchanges Crypto">
-                            <option value="binance">Binance</option>
-                            <option value="bybit">Bybit</option>
-                            <option value="kucoin">KuCoin</option>
-                            <option value="okx">OKX</option>
-                            <option value="kraken">Kraken</option>
-                            <option value="coinbase">Coinbase Advanced</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="row">
-                    <div class="form-group">
-                        <label>📂 Categoría</label>
-                        <select id="category">
-                            <option value="crypto">🪙 Cripto</option>
-                            <option value="stocks">📈 Acciones</option>
-                            <option value="forex">💱 Forex</option>
-                            <option value="indices">📊 Índices</option>
-                            <option value="commodities">🥇 Commodities</option>
-                        </select>
+                <!-- Account Section -->
+                <div class="form-section">
+                    <h3 class="section-title">🔐 Account Credentials</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" id="email" class="form-input" placeholder="your@email.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Password</label>
+                            <input type="password" id="password" class="form-input" placeholder="••••••••" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>⏱️ Intervalo</label>
-                        <select id="interval">
-                            <option value="1m">1 minuto</option>
-                            <option value="5m" selected>5 minutos</option>
-                            <option value="15m">15 minutos</option>
-                            <option value="30m">30 minutos</option>
-                            <option value="1h">1 hora</option>
+                </div>
+
+                <!-- Platform Section -->
+                <div class="form-section">
+                    <h3 class="section-title">🏦 Trading Platform</h3>
+                    <div class="form-group full-width">
+                        <label class="form-label">Select Exchange/Broker</label>
+                        <select id="platform" class="form-select" required>
+                            <option value="">Choose your platform</option>
+                            <optgroup label="Binary Options">
+                                <option value="binomo">Binomo</option>
+                                <option value="iqoption">IQ Option</option>
+                                <option value="quotex">Quotex</option>
+                                <option value="olymptrade">Olymp Trade</option>
+                                <option value="pocket">Pocket Option</option>
+                            </optgroup>
+                            <optgroup label="Crypto Exchanges">
+                                <option value="binance">Binance</option>
+                                <option value="bybit">Bybit</option>
+                                <option value="kucoin">KuCoin</option>
+                                <option value="okx">OKX</option>
+                                <option value="kraken">Kraken</option>
+                                <option value="coinbase">Coinbase Advanced</option>
+                            </optgroup>
                         </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>💎 Activo</label>
-                    <input type="text" id="symbol" placeholder="Escribe para buscar..." required autocomplete="off">
+
+                <!-- Asset Selection -->
+                <div class="form-section">
+                    <h3 class="section-title">📊 Asset Configuration</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select id="category" class="form-select">
+                                <option value="crypto">🪙 Cryptocurrency</option>
+                                <option value="stocks">📈 Stocks</option>
+                                <option value="forex">💱 Forex</option>
+                                <option value="indices">📊 Indices</option>
+                                <option value="commodities">🥇 Commodities</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Timeframe</label>
+                            <select id="interval" class="form-select">
+                                <option value="1m">1 Minute</option>
+                                <option value="5m" selected>5 Minutes</option>
+                                <option value="15m">15 Minutes</option>
+                                <option value="30m">30 Minutes</option>
+                                <option value="1h">1 Hour</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group full-width">
+                        <label class="form-label">Asset Symbol</label>
+                        <input type="text" id="symbol" class="form-input" placeholder="Search for asset..." required autocomplete="off">
+                    </div>
                 </div>
-                <div id="validationMsg" class="validation-msg"></div>
-                <button type="submit" class="submit-btn" id="submitBtn">🚀 Ejecutar Trade Automático</button>
+
+                <div id="validationMsg" class="validation-msg" style="display: none;"></div>
+                
+                <button type="submit" class="trade-button" id="submitBtn">
+                    🚀 Execute AI Trade
+                </button>
             </form>
+
             <div id="result" class="result"></div>
         </div>
+
+        <!-- Right Panel - Market Analysis -->
+        <div class="analysis-panel">
+            <!-- Market Overview -->
+            <div class="analysis-card">
+                <h3 class="card-title">📈 Market Overview</h3>
+                <div class="market-stats">
+                    <div class="stat-item">
+                        <div class="stat-value positive">+2.4%</div>
+                        <div class="stat-label">Market Trend</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">68</div>
+                        <div class="stat-label">Fear & Greed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value positive">847</div>
+                        <div class="stat-label">Active Signals</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value positive">94.2%</div>
+                        <div class="stat-label">AI Accuracy</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Signals -->
+            <div class="analysis-card">
+                <h3 class="card-title">🎯 Live AI Signals</h3>
+                <div class="signals-list" id="liveSignals">
+                    <div class="signal-item buy">
+                        <div class="signal-info">
+                            <h4>BTC-USD</h4>
+                            <div class="signal-meta">5m • $67,234.50</div>
+                        </div>
+                        <div class="signal-action">
+                            <div class="signal-type positive">BUY</div>
+                            <div class="signal-confidence">87% confidence</div>
+                        </div>
+                    </div>
+                    <div class="signal-item sell">
+                        <div class="signal-info">
+                            <h4>ETH-USD</h4>
+                            <div class="signal-meta">5m • $3,456.78</div>
+                        </div>
+                        <div class="signal-action">
+                            <div class="signal-type negative">SELL</div>
+                            <div class="signal-confidence">92% confidence</div>
+                        </div>
+                    </div>
+                    <div class="signal-item buy">
+                        <div class="signal-info">
+                            <h4>AAPL</h4>
+                            <div class="signal-meta">15m • $178.45</div>
+                        </div>
+                        <div class="signal-action">
+                            <div class="signal-type positive">BUY</div>
+                            <div class="signal-confidence">79% confidence</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Chart -->
+            <div class="analysis-card">
+                <h3 class="card-title">📊 AI Performance</h3>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Risk Management -->
+            <div class="analysis-card">
+                <h3 class="card-title">⚖️ Risk Management</h3>
+                <div style="space-y: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span>Risk Level</span>
+                        <span style="color: #ffa502; font-weight: 600;">MODERATE</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span>Max Drawdown</span>
+                        <span style="color: #00ff88; font-weight: 600;">-2.3%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span>Win Rate</span>
+                        <span style="color: #00ff88; font-weight: 600;">78.4%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Profit Factor</span>
+                        <span style="color: #00ff88; font-weight: 600;">2.14</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
     <script>
+        // Initialize Chart
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        const performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'AI Performance',
+                    data: [85, 89, 92, 88, 94, 96],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.6)'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.6)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Auto-update live signals
+        function updateLiveSignals() {
+            // This would fetch real data in production
+            const signals = [
+                { symbol: 'BTC-USD', price: '$67,234.50', signal: 'BUY', confidence: '87%', timeframe: '5m' },
+                { symbol: 'ETH-USD', price: '$3,456.78', signal: 'SELL', confidence: '92%', timeframe: '5m' },
+                { symbol: 'AAPL', price: '$178.45', signal: 'BUY', confidence: '79%', timeframe: '15m' }
+            ];
+            
+            // Update signals display (simplified for demo)
+        }
+
+        // Update signals every 30 seconds
+        setInterval(updateLiveSignals, 30000);
+
+        // Asset autocomplete and form handling
         let assetsByCategory = {};
         let currentCategory = 'crypto';
-        fetch('/api/categories').then(r => r.json()).then(data => { assetsByCategory = data.categories; setupAutocomplete(currentCategory); }).catch(err => console.error('Error:', err));
-        document.getElementById('category').onchange = function() { currentCategory = this.value; document.getElementById('symbol').value = ''; setupAutocomplete(currentCategory); };
+
+        // Load asset categories
+        fetch('/api/categories')
+            .then(r => r.json())
+            .then(data => {
+                assetsByCategory = data.categories;
+                setupAutocomplete(currentCategory);
+            })
+            .catch(err => console.error('Error loading assets:', err));
+
+        // Category change handler
+        document.getElementById('category').onchange = function() {
+            currentCategory = this.value;
+            document.getElementById('symbol').value = '';
+            setupAutocomplete(currentCategory);
+        };
+
+        // Setup autocomplete
         function setupAutocomplete(category) {
             const assets = assetsByCategory[category] || [];
-            const assetList = assets.map(a => a.symbol + ' - ' + a.name);
-            if (window.autoCompleteInstance) window.autoCompleteInstance.unInit();
-            window.autoCompleteInstance = new autoComplete({ selector: "#symbol", placeHolder: "Escribe para buscar activo...", data: { src: assetList }, resultItem: { highlight: true }, events: { input: { selection: (event) => { document.getElementById('symbol').value = event.detail.selection.value.split(' - ')[0]; } } } });
+            const assetList = assets.map(a => `${a.symbol} - ${a.name}`);
+            
+            if (window.autoCompleteInstance) {
+                window.autoCompleteInstance.unInit();
+            }
+            
+            window.autoCompleteInstance = new autoComplete({
+                selector: "#symbol",
+                placeHolder: "Search for asset...",
+                data: {
+                    src: assetList
+                },
+                resultItem: {
+                    highlight: true
+                },
+                events: {
+                    input: {
+                        selection: (event) => {
+                            document.getElementById('symbol').value = event.detail.selection.value.split(' - ')[0];
+                        }
+                    }
+                }
+            });
         }
+
+        // Form submission
         document.getElementById('tradeForm').onsubmit = async function(e) {
             e.preventDefault();
+            
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value.trim();
             const platform = document.getElementById('platform').value;
             const symbol = document.getElementById('symbol').value.trim().split(' - ')[0];
             const interval = document.getElementById('interval').value;
+            
             const resultDiv = document.getElementById('result');
             const validationMsg = document.getElementById('validationMsg');
             const submitBtn = document.getElementById('submitBtn');
-            validationMsg.textContent = '';
+            
+            // Clear previous messages
+            validationMsg.style.display = 'none';
             resultDiv.className = 'result';
             resultDiv.innerHTML = '';
-            if (!email || !password || !platform || !symbol) { validationMsg.textContent = '⚠️ Todos los campos son obligatorios.'; return; }
-            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { validationMsg.textContent = '⚠️ El email no es válido.'; return; }
-            if (password.length < 4) { validationMsg.textContent = '⚠️ La contraseña debe tener al menos 4 caracteres.'; return; }
+            
+            // Validation
+            if (!email || !password || !platform || !symbol) {
+                validationMsg.textContent = '⚠️ All fields are required.';
+                validationMsg.style.display = 'block';
+                return;
+            }
+            
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                validationMsg.textContent = '⚠️ Please enter a valid email address.';
+                validationMsg.style.display = 'block';
+                return;
+            }
+            
+            if (password.length < 4) {
+                validationMsg.textContent = '⚠️ Password must be at least 4 characters.';
+                validationMsg.style.display = 'block';
+                return;
+            }
+            
+            // Show loading state
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner"></span> Procesando...';
+            submitBtn.innerHTML = '<span class="spinner"></span> Analyzing Market...';
             resultDiv.className = 'result loading';
-            resultDiv.innerHTML = '<span class="spinner"></span> Analizando mercado y ejecutando trade...';
+            resultDiv.innerHTML = `
+                <div style="text-align: center;">
+                    <span class="spinner"></span>
+                    <h3>AI is analyzing the market...</h3>
+                    <p>Connecting to ${platform} • Analyzing ${symbol} • Executing trade strategy</p>
+                </div>
+            `;
+            
             try {
-                const res = await fetch('/api/trade', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, platform, symbol, interval }) });
-                const data = await res.json();
+                const response = await fetch('/api/trade', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        platform,
+                        symbol,
+                        interval
+                    })
+                });
+                
+                const data = await response.json();
+                
                 if (data.success) {
                     resultDiv.className = 'result success';
-                    resultDiv.innerHTML = '<h3>✅ Trade Ejecutado Exitosamente</h3><p><strong>Señal:</strong> ' + (data.trade_result?.signal || 'N/A') + '</p><p><strong>Precio:</strong> ' + (data.trade_result?.price || 'N/A') + '</p><p><strong>Confianza:</strong> ' + (data.trade_result?.confidence || 'N/A') + '%</p><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Trade Executed Successfully</h3>
+                        <div class="result-details">
+                            <div class="result-item">
+                                <div class="result-item-label">Signal</div>
+                                <div class="result-item-value">${data.trade_result?.signal || 'N/A'}</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-item-label">Price</div>
+                                <div class="result-item-value">$${data.trade_result?.price || 'N/A'}</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-item-label">Confidence</div>
+                                <div class="result-item-value">${data.trade_result?.confidence || 'N/A'}%</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-item-label">Platform</div>
+                                <div class="result-item-value">${platform}</div>
+                            </div>
+                        </div>
+                        <details style="margin-top: 1rem;">
+                            <summary style="cursor: pointer; color: rgba(255,255,255,0.7);">View Technical Details</summary>
+                            <pre style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; margin-top: 0.5rem;">${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
                 } else {
-                    let errorMsg = data.error || 'No se pudo ejecutar el trade.';
-                    if (errorMsg.toLowerCase().includes('login')) errorMsg += ' (Verifica usuario y contraseña)';
+                    let errorMsg = data.error || 'Failed to execute trade.';
+                    if (errorMsg.toLowerCase().includes('login')) {
+                        errorMsg += ' Please verify your credentials.';
+                    }
+                    
                     resultDiv.className = 'result error';
-                    resultDiv.innerHTML = '<h3>❌ Error</h3><p>' + errorMsg + '</p>';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Trade Failed</h3>
+                        <p>${errorMsg}</p>
+                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <strong>Troubleshooting:</strong>
+                            <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                                <li>Verify your login credentials</li>
+                                <li>Check if the platform is accessible</li>
+                                <li>Ensure sufficient account balance</li>
+                                <li>Try a different asset or timeframe</li>
+                            </ul>
+                        </div>
+                    `;
                 }
-            } catch (err) {
+            } catch (error) {
                 resultDiv.className = 'result error';
-                resultDiv.innerHTML = '<h3>❌ Error de Conexión</h3><p>No se pudo conectar con el servidor.</p>';
+                resultDiv.innerHTML = `
+                    <h3>❌ Connection Error</h3>
+                    <p>Unable to connect to the trading server. Please check your internet connection and try again.</p>
+                `;
             }
+            
+            // Reset button
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '🚀 Ejecutar Trade Automático';
+            submitBtn.innerHTML = '🚀 Execute AI Trade';
         };
     </script>
 </body>

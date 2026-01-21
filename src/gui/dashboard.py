@@ -68,12 +68,67 @@ auto_monitor = {
     'lock': threading.Lock()
 }
 
+# Sistema de pre-carga en background para tiempo real
+background_loader = {
+    'active': False,
+    'thread': None,
+    'lock': threading.Lock()
+}
+
+def background_data_loader():
+    """Carga datos en background para mantener cache fresco"""
+    print("🔄 Iniciando carga de datos en background...")
+    
+    while background_loader['active']:
+        try:
+            # Cargar activos principales cada 3 segundos
+            for asset in DEFAULT_ASSETS[:10]:  # Solo los primeros 10 para no sobrecargar
+                if not background_loader['active']:
+                    break
+                    
+                try:
+                    # Cargar para intervalos principales
+                    for interval in ['1m', '5m']:
+                        get_cached_data(asset['symbol'], interval)
+                        time.sleep(0.1)  # Pequeña pausa entre requests
+                except Exception as e:
+                    print(f"⚠️ Error cargando {asset['symbol']}: {e}")
+            
+            # Pausa antes del siguiente ciclo
+            time.sleep(3)
+            
+        except Exception as e:
+            print(f"❌ Error en background loader: {e}")
+            time.sleep(5)
+    
+    print("⏹️ Background loader detenido")
+
+def start_background_loader():
+    """Inicia el cargador de datos en background"""
+    with background_loader['lock']:
+        if not background_loader['active']:
+            background_loader['active'] = True
+            background_loader['thread'] = threading.Thread(
+                target=background_data_loader,
+                daemon=True
+            )
+            background_loader['thread'].start()
+            print("✅ Background loader iniciado")
+
+def stop_background_loader():
+    """Detiene el cargador de datos en background"""
+    with background_loader['lock']:
+        background_loader['active'] = False
+        if background_loader['thread']:
+            background_loader['thread'].join(timeout=2)
+        print("⏹️ Background loader detenido")
+
 # Cache de datos para evitar requests excesivos
 cache = {
     'last_update': {},
     'data': {}
 }
-CACHE_DURATION = 30  # 30 segundos para evitar rate limiting de yfinance
+CACHE_DURATION = 5  # Reducido a 5 segundos para tiempo real más fluido
 
 # Configuración completa de activos por categoría (mínimo 20 por categoría)
 ASSET_CATEGORIES = {
@@ -410,13 +465,19 @@ def analyze_asset(symbol, interval='5m', use_binomo_fallback=False):
 
 
 def get_cached_data(symbol, interval, use_binomo_fallback=False):
-    """Obtiene datos del cache si están disponibles"""
+    """Obtiene datos del cache si están disponibles - optimizado para tiempo real"""
     cache_key = f"{symbol}_{interval}_{'binomo' if use_binomo_fallback else 'normal'}"
     now = time.time()
     
+    # Para intervalos de 1m y 5m, usar cache más corto para tiempo real
+    if interval in ['1m', '5m']:
+        cache_duration = 3  # 3 segundos para intervalos cortos
+    else:
+        cache_duration = CACHE_DURATION
+    
     if cache_key in cache['last_update']:
         last_update = cache['last_update'][cache_key]
-        if now - last_update < CACHE_DURATION:
+        if now - last_update < cache_duration:
             return cache['data'].get(cache_key)
     
     # Datos no en cache o expirados
@@ -433,6 +494,18 @@ def get_cached_data(symbol, interval, use_binomo_fallback=False):
 def index():
     """Página principal del dashboard"""
     return render_template('dashboard.html')
+
+
+@app.route('/portfolio')
+def portfolio():
+    """Página del portfolio"""
+    return render_template('portfolio.html')
+
+
+@app.route('/settings')
+def settings():
+    """Página de configuración"""
+    return render_template('settings.html')
 
 
 # NUEVA PÁGINA: Interfaz de trading automático
@@ -495,27 +568,42 @@ def get_categories():
 
 @app.route('/api/analyze-category/<category>')
 def analyze_category(category):
-    """Analiza todos los activos de una categoría con rate limiting y manejo de errores"""
+    """Analiza todos los activos de una categoría - optimizado para tiempo real"""
     import time
     import traceback
     import logging
+    import concurrent.futures
+    from threading import Lock
+    
     start_time = time.time()
     interval = request.args.get('interval', '5m')
+    
     try:
         if category not in ASSET_CATEGORIES:
             return jsonify({'error': 'Categoría no válida'}), 400
+        
         results = []
-        for i, asset in enumerate(ASSET_CATEGORIES[category]):
+        results_lock = Lock()
+        
+        def analyze_single_asset(asset):
+            """Analiza un solo activo"""
             try:
                 result = get_cached_data(asset['symbol'], interval)
                 if result:
                     result['name'] = asset['name']
                     result['category'] = category
-                    results.append(result)
+                    with results_lock:
+                        results.append(result)
+                    return True
             except Exception as e:
-                logging.error(f"Error analizando {asset['symbol']}: {e}\n{traceback.format_exc()}")
-            if i < len(ASSET_CATEGORIES[category]) - 1 and not (result if 'result' in locals() else None):
-                time.sleep(0.3)
+                logging.error(f"Error analizando {asset['symbol']}: {e}")
+                return False
+        
+        # Procesar activos en paralelo para tiempo real
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(analyze_single_asset, asset) for asset in ASSET_CATEGORIES[category]]
+            concurrent.futures.wait(futures, timeout=15)  # Timeout de 15 segundos
+        
         elapsed = round(time.time() - start_time, 2)
         return jsonify({
             'category': category,
@@ -523,11 +611,45 @@ def analyze_category(category):
             'total': len(ASSET_CATEGORIES[category]),
             'loaded': len(results),
             'timestamp': datetime.now().isoformat(),
-            'elapsed': elapsed
+            'elapsed': elapsed,
+            'realtime_optimized': True
         })
+        
     except Exception as e:
         logging.error(f"Error en analyze_category: {e}\n{traceback.format_exc()}")
         return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+
+
+@app.route('/api/analyze-category-fast/<category>')
+def analyze_category_fast(category):
+    """Versión ultra-rápida para tiempo real - solo cache"""
+    interval = request.args.get('interval', '5m')
+    
+    try:
+        if category not in ASSET_CATEGORIES:
+            return jsonify({'error': 'Categoría no válida'}), 400
+        
+        results = []
+        for asset in ASSET_CATEGORIES[category]:
+            cache_key = f"{asset['symbol']}_{interval}_normal"
+            if cache_key in cache['data']:
+                result = cache['data'][cache_key].copy()
+                result['name'] = asset['name']
+                result['category'] = category
+                results.append(result)
+        
+        return jsonify({
+            'category': category,
+            'assets': results,
+            'total': len(ASSET_CATEGORIES[category]),
+            'loaded': len(results),
+            'timestamp': datetime.now().isoformat(),
+            'cache_only': True,
+            'realtime_optimized': True
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/analyze/<symbol>')
@@ -567,31 +689,74 @@ def compare_sources_endpoint(symbol):
 
 @app.route('/api/analyze-all')
 def analyze_all():
-    """Analiza todos los activos configurados con manejo de errores"""
+    """Analiza todos los activos configurados - optimizado para tiempo real"""
     import traceback
     import logging
     import time
+    import concurrent.futures
+    from threading import Lock
+    
     start_time = time.time()
     interval = request.args.get('interval', '5m')
+    
     try:
         results = []
-        for asset in DEFAULT_ASSETS:
+        results_lock = Lock()
+        
+        def analyze_single_asset(asset):
+            """Analiza un solo activo"""
             try:
                 result = get_cached_data(asset['symbol'], interval)
                 if result:
                     result['name'] = asset['name']
-                    results.append(result)
+                    with results_lock:
+                        results.append(result)
+                    return True
             except Exception as e:
-                logging.error(f"Error analizando {asset['symbol']}: {e}\n{traceback.format_exc()}")
+                logging.error(f"Error analizando {asset['symbol']}: {e}")
+                return False
+        
+        # Procesar activos en paralelo
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(analyze_single_asset, asset) for asset in DEFAULT_ASSETS]
+            concurrent.futures.wait(futures, timeout=10)  # Timeout de 10 segundos
+        
         elapsed = round(time.time() - start_time, 2)
         return jsonify({
             'assets': results,
             'timestamp': datetime.now().isoformat(),
-            'elapsed': elapsed
+            'elapsed': elapsed,
+            'realtime_optimized': True
         })
+        
     except Exception as e:
         logging.error(f"Error en analyze_all: {e}\n{traceback.format_exc()}")
         return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+
+
+@app.route('/api/analyze-all-fast')
+def analyze_all_fast():
+    """Versión ultra-rápida - solo datos en cache"""
+    interval = request.args.get('interval', '5m')
+    
+    try:
+        results = []
+        for asset in DEFAULT_ASSETS:
+            cache_key = f"{asset['symbol']}_{interval}_normal"
+            if cache_key in cache['data']:
+                result = cache['data'][cache_key].copy()
+                result['name'] = asset['name']
+                results.append(result)
+        
+        return jsonify({
+            'assets': results,
+            'timestamp': datetime.now().isoformat(),
+            'cache_only': True,
+            'realtime_optimized': True
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/multi-timeframe/<symbol>')
@@ -881,8 +1046,36 @@ def get_auto_monitor_status():
     })
 
 
-@app.route('/health')
-def health():
+@app.route('/api/background-loader/start', methods=['POST'])
+def start_background_loader_api():
+    """Inicia el cargador de datos en background"""
+    start_background_loader()
+    return jsonify({
+        'success': True,
+        'message': 'Background loader iniciado',
+        'active': background_loader['active']
+    })
+
+
+@app.route('/api/background-loader/stop', methods=['POST'])
+def stop_background_loader_api():
+    """Detiene el cargador de datos en background"""
+    stop_background_loader()
+    return jsonify({
+        'success': True,
+        'message': 'Background loader detenido',
+        'active': background_loader['active']
+    })
+
+
+@app.route('/api/background-loader/status')
+def background_loader_status():
+    """Estado del background loader"""
+    return jsonify({
+        'active': background_loader['active'],
+        'cache_size': len(cache['data']),
+        'cache_keys': list(cache['data'].keys())[:10]  # Primeras 10 keys
+    })
     """Endpoint de salud"""
     webhook_stats = webhook_notifier.get_stats()
     
@@ -913,11 +1106,12 @@ def run_dashboard(host='127.0.0.1', port=5000, debug=False):
     print("🚀 DASHBOARD DE TRADING EN TIEMPO REAL")
     print("=" * 80)
     print(f"\n📊 Servidor iniciado en: http://{host}:{port}")
-    print(f"🔴 Caché de datos: {CACHE_DURATION} segundos")
+    print(f"🔴 Caché de datos: {CACHE_DURATION} segundos (optimizado para tiempo real)")
     print(f"💹 Monitoreando {len(DEFAULT_ASSETS)} activos por defecto")
     print(f"📂 5 categorías con 20 activos cada una")
     print(f"⏱️  {len(DEFAULT_INTERVALS)} intervalos disponibles")
-    print(f"⚡ Rate limiting: Delays automáticos para evitar bloqueos")
+    print(f"⚡ Procesamiento paralelo activado (sin rate limiting)")
+    print(f"🔄 Background loader: Mantiene datos frescos automáticamente")
     print(f"\n🌐 FUENTES DE DATOS:")
     print(f"   🔴 6 Exchanges Crypto - Tiempo real <1s")
     print(f"      • Binance (Principal)")
@@ -929,10 +1123,26 @@ def run_dashboard(host='127.0.0.1', port=5000, debug=False):
     print(f"   📊 Yahoo Finance (Stocks/Forex) - 15-60s latency")
     print(f"   🟣 Binomo (Velas Japonesas) - Fallback automático")
     print(f"   ⚙️  Fallback automático entre exchanges")
+    print("\n🚀 OPTIMIZACIONES TIEMPO REAL:")
+    print("   • Cache reducido a 5 segundos (3s para 1m/5m)")
+    print("   • Procesamiento paralelo con ThreadPoolExecutor")
+    print("   • Background loader mantiene datos frescos")
+    print("   • Endpoints rápidos (/api/*-fast) solo cache")
+    print("   • Sin delays artificiales entre requests")
     print("\n⚠️  Presiona Ctrl+C para detener el servidor\n")
     print("=" * 80)
     
-    app.run(host=host, port=port, debug=debug, threaded=True)
+    # Iniciar background loader automáticamente
+    start_background_loader()
+    
+    try:
+        app.run(host=host, port=port, debug=debug, threaded=True)
+    except KeyboardInterrupt:
+        print("\n\n🛑 Deteniendo servidor...")
+        stop_background_loader()
+        print("👋 Dashboard detenido. ¡Hasta luego!\n")
+    finally:
+        stop_background_loader()
 
 
 if __name__ == '__main__':

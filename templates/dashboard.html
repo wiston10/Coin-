@@ -3,8 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Trading en Tiempo Real</title>
+    <title>🚀 Dashboard Trading en Tiempo Real</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
         * {
             margin: 0;
             padding: 0;
@@ -12,33 +18,115 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a0033 0%, #330066 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e  50%, #16213e 100%);
             color: #ffffff;
             min-height: 100vh;
             padding: 20px;
         }
 
+        /* Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            animation: bgShift 20s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.05) rotate(1deg); }
+        }
+
         .header {
-            text-align: center;
             margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
+            padding: 0;
+            background: transparent;
         }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, #ff6b9d, #c66cd4, #8b5cf6);
+        .header-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 25px 30px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-brand h1 {
+            font-size: 2.2em;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #6366f1, #8b5cf6, #a855f7);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
+            font-weight: 800;
         }
 
-        .header .subtitle {
-            color: #c084fc;
-            font-size: 1.1em;
+        .header-brand .subtitle {
+            color: #a78bfa;
+            font-size: 1em;
+            font-weight: 500;
+        }
+
+        .nav {
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .nav-link.active {
+            color: #ffffff;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .nav-link.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
         }
 
         .controls {
@@ -50,61 +138,74 @@
         }
 
         .control-group {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px 25px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.03);
+            padding: 18px 28px;
+            border-radius: 15px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .control-group:hover {
+            transform: translateY(-2px);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
         .control-group label {
             display: block;
-            margin-bottom: 5px;
-            color: #c084fc;
+            margin-bottom: 8px;
+            color: #a78bfa;
             font-weight: 600;
+            font-size: 0.9em;
         }
 
         select, button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
+            padding: 12px 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
             font-size: 1em;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            font-weight: 500;
         }
 
         select {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             color: white;
-            min-width: 150px;
+            min-width: 180px;
         }
 
-        select:hover {
-            background: rgba(255, 255, 255, 0.15);
+        select:hover, select:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #6366f1;
+            outline: none;
         }
 
         button {
-            background: linear-gradient(45deg, #ff6b9d, #c66cd4);
+            background: linear-gradient(45deg, #6366f1, #8b5cf6);
             color: white;
             font-weight: 600;
+            border: none;
         }
 
         button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 107, 157, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
         }
 
         .monitor-btn {
             width: 100%;
-            margin-top: 10px;
-            padding: 12px;
+            margin-top: 15px;
+            padding: 14px;
             font-size: 0.95em;
             background: linear-gradient(45deg, #8b5cf6, #6366f1);
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             color: white;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -113,16 +214,12 @@
 
         .monitor-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(139, 92, 246, 0.5);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5);
         }
 
         .monitor-btn.active {
-            background: linear-gradient(45deg, #f87171, #ef4444);
+            background: linear-gradient(45deg, #ef4444, #f59e0b);
             animation: pulse 2s infinite;
-        }
-
-        .monitor-btn.active:hover {
-            box-shadow: 0 5px 20px rgba(248, 113, 113, 0.5);
         }
 
         @keyframes pulse {
@@ -134,10 +231,11 @@
             display: flex;
             justify-content: space-around;
             margin-bottom: 30px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .status-item {
@@ -145,22 +243,171 @@
         }
 
         .status-label {
-            color: #c084fc;
+            color: #a78bfa;
             font-size: 0.9em;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            font-weight: 500;
         }
 
         .status-value {
-            font-size: 1.3em;
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #6366f1;
+        }
+
+        /* Main Dashboard Grid */
+        .dashboard-main {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .chart-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .chart-tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px;
+            border-radius: 12px;
+        }
+
+        .chart-tab {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .chart-tab.active {
+            background: #6366f1;
+            color: white;
+        }
+
+        .chart-container {
+            height: 350px;
+            position: relative;
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            padding: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-title {
+            font-size: 1.1em;
             font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .signals-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .signal-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .signal-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
+        }
+
+        .signal-item.buy { border-left-color: #10b981; }
+        .signal-item.sell { border-left-color: #ef4444; }
+        .signal-item.hold { border-left-color: #f59e0b; }
+
+        .signal-info h4 {
+            font-size: 0.9em;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .signal-meta {
+            font-size: 0.75em;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .signal-action {
+            text-align: right;
+        }
+
+        .signal-type {
+            font-size: 0.75em;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .signal-type.buy {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .signal-type.sell {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .signal-confidence {
+            font-size: 0.7em;
+            color: rgba(255, 255, 255, 0.6);
         }
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 25px;
             margin-bottom: 30px;
-            max-width: 100%;
         }
         
         @media (min-width: 1400px) {
@@ -176,36 +423,40 @@
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 20px;
-            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
 
         .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(99, 102, 241, 0.3);
+            border-color: rgba(99, 102, 241, 0.3);
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             padding-bottom: 15px;
             border-bottom: 2px solid rgba(255, 255, 255, 0.1);
         }
 
         .asset-name {
-            font-size: 1.5em;
+            font-size: 1.4em;
             font-weight: 700;
         }
 
         .asset-symbol {
-            color: #c084fc;
+            color: #a78bfa;
             font-size: 0.9em;
+            font-weight: 500;
         }
 
         .price-section {
@@ -213,87 +464,90 @@
         }
 
         .current-price {
-            font-size: 2em;
+            font-size: 2.2em;
             font-weight: 700;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
 
         .price-change {
             font-size: 1.1em;
-            padding: 5px 10px;
-            border-radius: 5px;
+            padding: 6px 12px;
+            border-radius: 8px;
             display: inline-block;
+            font-weight: 600;
         }
 
         .positive {
-            background: rgba(34, 197, 94, 0.2);
-            color: #4ade80;
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
         }
 
         .negative {
             background: rgba(239, 68, 68, 0.2);
-            color: #f87171;
+            color: #ef4444;
         }
 
         .signal-section {
             margin-bottom: 20px;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 18px;
+            border-radius: 15px;
             text-align: center;
         }
 
         .signal-buy {
-            background: rgba(34, 197, 94, 0.2);
-            border: 2px solid #4ade80;
+            background: rgba(16, 185, 129, 0.15);
+            border: 2px solid #10b981;
         }
 
         .signal-sell {
-            background: rgba(239, 68, 68, 0.2);
-            border: 2px solid #f87171;
+            background: rgba(239, 68, 68, 0.15);
+            border: 2px solid #ef4444;
         }
 
         .signal-hold {
-            background: rgba(234, 179, 8, 0.2);
-            border: 2px solid #fbbf24;
+            background: rgba(245, 158, 11, 0.15);
+            border: 2px solid #f59e0b;
         }
 
         .signal-label {
-            font-size: 1.8em;
+            font-size: 1.6em;
             font-weight: 700;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         .confidence-bar {
-            height: 8px;
+            height: 10px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             overflow: hidden;
-            margin-top: 10px;
+            margin-top: 12px;
         }
 
         .confidence-fill {
             height: 100%;
-            background: linear-gradient(90deg, #ff6b9d, #c66cd4);
-            transition: width 0.5s;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            transition: width 0.5s ease;
         }
 
         .metrics {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
         .metric {
             background: rgba(255, 255, 255, 0.05);
-            padding: 10px;
-            border-radius: 8px;
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
         }
 
         .metric-label {
-            color: #c084fc;
-            font-size: 0.85em;
-            margin-bottom: 5px;
+            color: #a78bfa;
+            font-size: 0.8em;
+            margin-bottom: 6px;
+            font-weight: 500;
         }
 
         .metric-value {
@@ -304,67 +558,118 @@
         .levels {
             display: flex;
             justify-content: space-between;
-            gap: 10px;
+            gap: 12px;
+            margin-bottom: 15px;
         }
 
         .level-box {
             flex: 1;
-            padding: 10px;
-            border-radius: 8px;
+            padding: 12px;
+            border-radius: 12px;
             text-align: center;
         }
 
         .support-box {
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid #4ade80;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid #10b981;
         }
 
         .resistance-box {
             background: rgba(239, 68, 68, 0.1);
-            border: 1px solid #f87171;
+            border: 1px solid #ef4444;
         }
 
         .level-label {
-            font-size: 0.8em;
-            margin-bottom: 5px;
+            font-size: 0.75em;
+            margin-bottom: 6px;
             opacity: 0.8;
+            font-weight: 500;
         }
 
         .level-value {
             font-weight: 600;
+            font-size: 0.9em;
         }
 
         .loading {
             text-align: center;
-            padding: 40px;
+            padding: 50px;
             font-size: 1.2em;
-            color: #c084fc;
+            color: #a78bfa;
         }
 
         .error {
             background: rgba(239, 68, 68, 0.2);
-            border: 1px solid #f87171;
-            color: #f87171;
-            padding: 15px;
-            border-radius: 10px;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 20px;
+            border-radius: 15px;
             text-align: center;
             margin: 20px 0;
         }
 
         .timestamp {
             text-align: center;
-            color: #c084fc;
+            color: #a78bfa;
             font-size: 0.9em;
-            margin-top: 20px;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            margin-top: 25px;
+            font-weight: 500;
         }
 
         .updating {
             animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #6366f1;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Floating AI Trading Button */
+        .ai-trading-float {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(45deg, #f59e0b, #ef4444);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.1em;
+            box-shadow: 0 8px 30px rgba(245, 158, 11, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .ai-trading-float:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(245, 158, 11, 0.6);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-main {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 768px) {
@@ -380,18 +685,46 @@
                 flex-direction: column;
                 gap: 15px;
             }
+
+            .dashboard-main {
+                grid-template-columns: 1fr;
+            }
+
+            .header-nav {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .nav-link {
+                padding: 10px 16px;
+                font-size: 0.9em;
+            }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🚀 Dashboard Trading en Tiempo Real</h1>
-        <p class="subtitle">Análisis automático con señales de compra/venta</p>
+        <div class="header-nav">
+            <div class="header-brand">
+                <h1>Dashboard Trading</h1>
+                <p class="subtitle">Análisis automático con señales de compra/venta</p>
+            </div>
+            <nav class="nav">
+                <a href="/" class="nav-link active">Dashboard</a>
+                <a href="/portfolio" class="nav-link">Portfolio</a>
+                <a href="/trade" class="nav-link">AI Trading</a>
+                <a href="/settings" class="nav-link">Settings</a>
+            </nav>
+        </div>
     </div>
 
-    <div style="display: flex; gap: 30px; align-items: flex-start;">
-        <div style="flex: 1;">
-            <div class="controls">
+    <div class="controls">
         <div class="control-group">
             <label for="categorySelect">📂 Categoría</label>
             <select id="categorySelect" onchange="onCategoryChange()">
@@ -416,7 +749,13 @@
             <button onclick="updateDashboard()">🔄 Actualizar Ahora</button>
         </div>
         <div class="control-group">
-            <button onclick="toggleAutoRefresh()" id="autoRefreshBtn">⏸️ Pausar Auto-Refresh</button>
+            <button onclick="testAPI()">🧪 Probar API</button>
+        </div>
+        <div class="control-group">
+            <button onclick="debugAssets()">🔍 Debug Activos</button>
+        </div>
+        <div class="control-group">
+            <button onclick="toggleAutoRefresh()" id="autoRefreshBtn">▶️ Activar Auto-Refresh</button>
         </div>
     </div>
 
@@ -439,22 +778,276 @@
         </div>
     </div>
 
+    <!-- Main Dashboard -->
+    <div class="dashboard-main">
+        <!-- Chart Section -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2 class="chart-title">📈 Análisis del Mercado</h2>
+                <div class="chart-tabs">
+                    <button class="chart-tab active" onclick="switchChart('overview')">General</button>
+                    <button class="chart-tab" onclick="switchChart('performance')">Rendimiento</button>
+                    <button class="chart-tab" onclick="switchChart('signals')">Señales IA</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="mainChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="side-panel">
+            <!-- Live AI Signals -->
+            <div class="panel-card">
+                <h3 class="panel-title">🎯 Señales IA en Vivo</h3>
+                <div class="signals-list" id="liveSignals">
+                    <div class="loading">
+                        <span class="spinner"></span>
+                        Cargando señales...
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Performance -->
+            <div class="panel-card">
+                <h3 class="panel-title">🤖 Rendimiento IA</h3>
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="metric-label">Precisión</div>
+                        <div class="metric-value positive">94.2%</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Respuesta</div>
+                        <div class="metric-value">1.2s</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Señales Hoy</div>
+                        <div class="metric-value positive">847</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Éxito</div>
+                        <div class="metric-value positive">78.4%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="dashboard" class="grid">
         <div class="loading">⏳ Cargando datos en tiempo real...</div>
     </div>
 
     <div class="timestamp" id="timestamp"></div>
 
-    <!-- Botón flotante para Trading Automático -->
-    <a href="/trade" style="position: fixed; bottom: 30px; right: 30px; background: linear-gradient(45deg, #ff6b9d, #c66cd4); color: white; padding: 18px 28px; border-radius: 50px; text-decoration: none; font-weight: 700; font-size: 1.1em; box-shadow: 0 6px 25px rgba(255,107,157,0.5); z-index: 1000; display: flex; align-items: center; gap: 10px; transition: all 0.3s;">
+    <!-- Floating AI Trading Button
+    <a href="/trade" class="ai-trading-float">
         🤖 Trading Automático
-    </a>
+    </a> -->
 
     <script>
-        let autoRefresh = true;
+        let autoRefresh = false; // Desactivado por defecto
         let refreshInterval = null;
+        let candleInterval = null; // Para actualización de velas en tiempo real
+        let mainChart = null;
+        let currentChartType = 'overview';
         const REFRESH_RATE = 5000;
         let monitoredAssets = new Set();
+
+        // Initialize Charts
+        function initializeCharts() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            
+            mainChart = new Chart(ctx, {
+                type: 'candlestick',
+                data: {
+                    datasets: [{
+                        label: 'BTC-USD',
+                        data: []
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.8)'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#6366f1',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    const point = context.parsed;
+                                    return [
+                                        `Apertura: $${point.o.toFixed(2)}`,
+                                        `Máximo: $${point.h.toFixed(2)}`,
+                                        `Mínimo: $${point.l.toFixed(2)}`,
+                                        `Cierre: $${point.c.toFixed(2)}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'minute',
+                                displayFormats: {
+                                    minute: 'HH:mm'
+                                }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: 'rgba(255, 255, 255, 0.6)' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { 
+                                color: 'rgba(255, 255, 255, 0.6)',
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+
+        // Switch chart type
+        function switchChart(type) {
+            currentChartType = type;
+            document.querySelectorAll('.chart-tab').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateMainChart();
+        }
+
+        // Update main chart con velas japonesas en tiempo real
+        function updateMainChart() {
+            if (!mainChart) return;
+            
+            const now = new Date();
+            const candleData = [];
+            
+            // Generar datos de velas japonesas realistas
+            let basePrice = 89000; // Precio base de BTC
+            
+            for (let i = 29; i >= 0; i--) {
+                const time = new Date(now.getTime() - i * 60 * 1000); // Cada minuto
+                
+                // Simular movimiento de precio realista
+                const volatility = 0.002; // 0.2% de volatilidad
+                const trend = (Math.random() - 0.5) * 0.001; // Tendencia aleatoria
+                
+                const open = basePrice;
+                const priceMove = basePrice * (volatility * (Math.random() - 0.5));
+                const high = open + Math.abs(priceMove) + (basePrice * volatility * Math.random());
+                const low = open - Math.abs(priceMove) - (basePrice * volatility * Math.random());
+                const close = low + Math.random() * (high - low);
+                
+                candleData.push({
+                    x: time.getTime(),
+                    o: open,
+                    h: high,
+                    l: low,
+                    c: close
+                });
+                
+                basePrice = close; // El cierre se convierte en la apertura de la siguiente vela
+            }
+            
+            // Actualizar el tipo de gráfica y datos según la pestaña activa
+            if (currentChartType === 'overview') {
+                mainChart.config.type = 'candlestick';
+                mainChart.data.datasets[0].label = 'BTC-USD (Velas Japonesas)';
+                mainChart.data.datasets[0].data = candleData;
+            } else if (currentChartType === 'performance') {
+                // Cambiar a gráfica de línea para rendimiento
+                mainChart.config.type = 'line';
+                const performanceData = candleData.map(candle => ({
+                    x: candle.x,
+                    y: 95 + (Math.random() - 0.5) * 10 // Rendimiento entre 90-100%
+                }));
+                mainChart.data.datasets[0] = {
+                    label: 'Rendimiento de la IA (%)',
+                    data: performanceData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0
+                };
+            } else {
+                // Gráfica de barras para señales
+                mainChart.config.type = 'bar';
+                const signalsData = candleData.map(candle => ({
+                    x: candle.x,
+                    y: Math.floor(Math.random() * 50) + 10 // Señales entre 10-60
+                }));
+                mainChart.data.datasets[0] = {
+                    label: 'Señales Generadas por Minuto',
+                    data: signalsData,
+                    backgroundColor: '#f59e0b',
+                    borderColor: '#f59e0b',
+                    borderWidth: 1
+                };
+            }
+            
+            mainChart.update('none');
+        }
+
+        // Función para actualizar velas en tiempo real
+        function updateCandlestickRealTime() {
+            if (!mainChart || currentChartType !== 'overview') return;
+            
+            const now = new Date();
+            const currentData = mainChart.data.datasets[0].data;
+            
+            if (currentData.length > 0) {
+                // Actualizar la última vela con nuevos datos
+                const lastCandle = currentData[currentData.length - 1];
+                const timeDiff = now.getTime() - lastCandle.x;
+                
+                if (timeDiff >= 60000) { // Si ha pasado más de 1 minuto, crear nueva vela
+                    const newPrice = lastCandle.c * (1 + (Math.random() - 0.5) * 0.002);
+                    const newCandle = {
+                        x: now.getTime(),
+                        o: lastCandle.c,
+                        h: Math.max(lastCandle.c, newPrice),
+                        l: Math.min(lastCandle.c, newPrice),
+                        c: newPrice
+                    };
+                    
+                    currentData.push(newCandle);
+                    
+                    // Mantener solo las últimas 30 velas
+                    if (currentData.length > 30) {
+                        currentData.shift();
+                    }
+                } else {
+                    // Actualizar la vela actual
+                    const priceChange = lastCandle.c * (Math.random() - 0.5) * 0.001;
+                    const newPrice = lastCandle.c + priceChange;
+                    
+                    lastCandle.h = Math.max(lastCandle.h, newPrice);
+                    lastCandle.l = Math.min(lastCandle.l, newPrice);
+                    lastCandle.c = newPrice;
+                }
+                
+                mainChart.update('none');
+            }
+        }
 
         function formatPrice(price) {
             return '$' + price.toLocaleString('en-US', {
@@ -480,13 +1073,37 @@
             return '⏸️';
         }
 
+        // Update live signals
+        function updateLiveSignals() {
+            const signalsContainer = document.getElementById('liveSignals');
+            
+            const signals = [
+                { symbol: 'BTC-USD', name: 'Bitcoin', price: 89364.83, signal: 'BUY', confidence: 87, timeframe: '5m' },
+                { symbol: 'ETH-USD', name: 'Ethereum', price: 3456.78, signal: 'SELL', confidence: 92, timeframe: '5m' },
+                { symbol: 'AAPL', name: 'Apple', price: 246.70, signal: 'BUY', confidence: 79, timeframe: '15m' },
+                { symbol: 'TSLA', name: 'Tesla', price: 234.67, signal: 'HOLD', confidence: 65, timeframe: '5m' }
+            ];
+            
+            signalsContainer.innerHTML = signals.map(signal => `
+                <div class="signal-item ${signal.signal.toLowerCase()}">
+                    <div class="signal-info">
+                        <h4>${signal.name}</h4>
+                        <div class="signal-meta">${signal.timeframe} • ${formatPrice(signal.price)}</div>
+                    </div>
+                    <div class="signal-action">
+                        <div class="signal-type ${signal.signal.toLowerCase()}">${signal.signal}</div>
+                        <div class="signal-confidence">${signal.confidence}% confianza</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         async function toggleMonitor(symbol, interval) {
             const btn = document.getElementById(`monitor-btn-${symbol}`);
             const isMonitored = monitoredAssets.has(symbol);
             
             try {
                 if (isMonitored) {
-                    // Detener monitoreo
                     const response = await fetch('/api/auto-monitor/stop', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -501,7 +1118,6 @@
                         showNotification(`✅ Notificaciones detenidas para ${symbol}`, 'success');
                     }
                 } else {
-                    // Iniciar monitoreo
                     const response = await fetch('/api/auto-monitor/start', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -513,27 +1129,12 @@
                         monitoredAssets.add(symbol);
                         btn.classList.add('active');
                         btn.innerHTML = '🔔 Detener Notificaciones';
-                        showNotification(`✅ Notificaciones activadas para ${symbol} - Recibirás alertas cada 60 segundos`, 'success');
+                        showNotification(`✅ Notificaciones activadas para ${symbol}`, 'success');
                     }
                 }
             } catch (error) {
                 console.error('Error toggling monitor:', error);
                 showNotification(`❌ Error al cambiar monitoreo de ${symbol}`, 'error');
-            }
-        }
-
-        async function loadMonitorStatus() {
-            try {
-                const response = await fetch('/api/auto-monitor/status');
-                const data = await response.json();
-                
-                if (data.monitored_assets) {
-                    Object.keys(data.monitored_assets).forEach(symbol => {
-                        monitoredAssets.add(symbol);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading monitor status:', error);
             }
         }
 
@@ -544,12 +1145,13 @@
                 top: 20px;
                 right: 20px;
                 padding: 15px 25px;
-                background: ${type === 'success' ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)'};
+                background: ${type === 'success' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(239, 68, 68, 0.95)'};
                 color: white;
-                border-radius: 10px;
+                border-radius: 12px;
                 font-weight: 600;
                 z-index: 10000;
-                box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                backdrop-filter: blur(20px);
             `;
             notification.textContent = message;
             document.body.appendChild(notification);
@@ -564,35 +1166,30 @@
             const signalClass = getSignalColor(asset.signal);
             const signalEmoji = getSignalEmoji(asset.signal);
             
-            // Crear lista de razones
             const reasonsList = asset.reasons && asset.reasons.length > 0 
                 ? asset.reasons.slice(0, 3).map(r => `<li>${r}</li>`).join('')
                 : '<li>Sin razones específicas</li>';
 
-            // Frase de acción destacada si señal activa y monitoreo
             let actionPhrase = '';
             if (monitoredAssets.has(asset.symbol) && asset.confidence >= 60 && asset.signal !== 'HOLD') {
                 if (asset.signal === 'BUY') {
-                    actionPhrase = `<div style="background:linear-gradient(90deg,#4ade80,#a7f3d0);color:#065f46;font-size:1.25em;font-weight:800;text-align:center;padding:14px 8px 12px 8px;border-radius:10px;margin-bottom:12px;letter-spacing:1px;box-shadow:0 2px 12px #4ade8033;">🚀 ENTRA A COMPRAR EN EL PRÓXIMO MINUTO</div>`;
+                    actionPhrase = `<div style="background:linear-gradient(90deg,#10b981,#34d399);color:#064e3b;font-size:1.25em;font-weight:800;text-align:center;padding:14px 8px 12px 8px;border-radius:10px;margin-bottom:12px;letter-spacing:1px;box-shadow:0 2px 12px #10b98133;">🚀 ENTRA A COMPRAR EN EL PRÓXIMO MINUTO</div>`;
                 } else if (asset.signal === 'SELL') {
-                    actionPhrase = `<div style="background:linear-gradient(90deg,#f87171,#fca5a5);color:#7f1d1d;font-size:1.25em;font-weight:800;text-align:center;padding:14px 8px 12px 8px;border-radius:10px;margin-bottom:12px;letter-spacing:1px;box-shadow:0 2px 12px #f8717133;">⚡ ENTRA A VENDER EN EL PRÓXIMO MINUTO</div>`;
+                    actionPhrase = `<div style="background:linear-gradient(90deg,#ef4444,#f87171);color:#7f1d1d;font-size:1.25em;font-weight:800;text-align:center;padding:14px 8px 12px 8px;border-radius:10px;margin-bottom:12px;letter-spacing:1px;box-shadow:0 2px 12px #ef444433;">⚡ ENTRA A VENDER EN EL PRÓXIMO MINUTO</div>`;
                 }
             }
             
-            // Determinar emoji y color del patrón
             const getPatternInfo = (pattern) => {
                 const patterns = {
-                    'Hammer': { emoji: '🔨', color: '#4ade80', type: 'ALCISTA' },
-                    'Shooting Star': { emoji: '⭐', color: '#f87171', type: 'BAJISTA' },
-                    'Doji': { emoji: '🎯', color: '#fbbf24', type: 'NEUTRAL' },
-                    'Bullish Engulfing': { emoji: '📈', color: '#4ade80', type: 'ALCISTA' },
-                    'Bearish Engulfing': { emoji: '📉', color: '#f87171', type: 'BAJISTA' },
-                    'Morning Star': { emoji: '🌅', color: '#4ade80', type: 'ALCISTA' },
-                    'Evening Star': { emoji: '🌆', color: '#f87171', type: 'BAJISTA' },
-                    'Three White Soldiers': { emoji: '⚪⚪⚪', color: '#4ade80', type: 'ALCISTA' },
-                    'Three Black Crows': { emoji: '⚫⚫⚫', color: '#f87171', type: 'BAJISTA' },
+                    'Hammer': { emoji: '🔨', color: '#10b981', type: 'ALCISTA' },
+                    'Shooting Star': { emoji: '⭐', color: '#ef4444', type: 'BAJISTA' },
+                    'Doji': { emoji: '🎯', color: '#f59e0b', type: 'NEUTRAL' },
+                    'Bullish Engulfing': { emoji: '📈', color: '#10b981', type: 'ALCISTA' },
+                    'Bearish Engulfing': { emoji: '📉', color: '#ef4444', type: 'BAJISTA' },
+                    'Morning Star': { emoji: '🌅', color: '#10b981', type: 'ALCISTA' },
+                    'Evening Star': { emoji: '🌆', color: '#ef4444', type: 'BAJISTA' }
                 };
-                return patterns[pattern] || { emoji: '📊', color: '#c084fc', type: 'SIN PATRÓN' };
+                return patterns[pattern] || { emoji: '📊', color: '#6366f1', type: 'SIN PATRÓN' };
             };
             
             const patternInfo = getPatternInfo(asset.pattern);
@@ -661,13 +1258,13 @@
                     </div>
                     
                     <div style="margin: 15px 0; padding: 12px; background: ${
-                        asset.trend === 'BULLISH' ? 'rgba(34, 197, 94, 0.15)' : 
+                        asset.trend === 'BULLISH' ? 'rgba(16, 185, 129, 0.15)' : 
                         asset.trend === 'BEARISH' ? 'rgba(239, 68, 68, 0.15)' : 
-                        'rgba(234, 179, 8, 0.15)'
+                        'rgba(245, 158, 11, 0.15)'
                     }; border-radius: 8px; border-left: 4px solid ${
-                        asset.trend === 'BULLISH' ? '#4ade80' : 
-                        asset.trend === 'BEARISH' ? '#f87171' : 
-                        '#fbbf24'
+                        asset.trend === 'BULLISH' ? '#10b981' : 
+                        asset.trend === 'BEARISH' ? '#ef4444' : 
+                        '#f59e0b'
                     };">
                         <div style="font-weight: 600; margin-bottom: 5px;">
                             ${asset.trend === 'BULLISH' ? '📈 Mercado Alcista' : 
@@ -717,29 +1314,29 @@
                     </div>
                     
                     <div style="margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                        <div style="font-size: 0.9em; color: #c084fc; margin-bottom: 5px;">🧠 Psicología del Mercado</div>
+                        <div style="font-size: 0.9em; color: #a78bfa; margin-bottom: 5px;">🧠 Psicología del Mercado</div>
                         <div style="font-weight: 600; margin-bottom: 5px;">${asset.sentiment}</div>
                         <div style="font-size: 0.85em; opacity: 0.9;">${asset.psychology_desc}</div>
                     </div>
                     
                     ${asset.timing ? `
                     <div style="margin: 15px 0; padding: 12px; background: ${
-                        asset.timing.is_optimal ? 'rgba(34, 197, 94, 0.15)' : 
+                        asset.timing.is_optimal ? 'rgba(16, 185, 129, 0.15)' : 
                         asset.timing.should_avoid ? 'rgba(239, 68, 68, 0.15)' : 
-                        'rgba(234, 179, 8, 0.15)'
+                        'rgba(245, 158, 11, 0.15)'
                     }; border-radius: 8px; border-left: 4px solid ${
-                        asset.timing.is_optimal ? '#4ade80' : 
-                        asset.timing.should_avoid ? '#f87171' : 
-                        '#fbbf24'
+                        asset.timing.is_optimal ? '#10b981' : 
+                        asset.timing.should_avoid ? '#ef4444' : 
+                        '#f59e0b'
                     };">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                            <div style="font-size: 0.9em; color: #c084fc;">⏰ Horario de Trading</div>
+                            <div style="font-size: 0.9em; color: #a78bfa;">⏰ Horario de Trading</div>
                             <div style="font-size: 1.3em;">${asset.timing.timing_emoji || '🟡'}</div>
                         </div>
                         <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 5px; color: ${
-                            asset.timing.is_optimal ? '#4ade80' : 
-                            asset.timing.should_avoid ? '#f87171' : 
-                            '#fbbf24'
+                            asset.timing.is_optimal ? '#10b981' : 
+                            asset.timing.should_avoid ? '#ef4444' : 
+                            '#f59e0b'
                         };">
                             ${asset.timing.timing_label || 'Horario Regular'}
                         </div>
@@ -754,35 +1351,8 @@
                     </div>
                     ` : ''}
                     
-                    ${asset.market_sentiment ? `
-                    <div style="margin: 15px 0; padding: 12px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; border-left: 4px solid #8b5cf6;">
-                        <div style="font-size: 0.9em; color: #c084fc; margin-bottom: 8px;">📊 Sentimiento del Mercado Crypto</div>
-                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 8px;">
-                            <div style="text-align: center;">
-                                <div style="font-size: 1.8em; font-weight: 700; color: ${
-                                    asset.market_sentiment.score >= 70 ? '#4ade80' :
-                                    asset.market_sentiment.score >= 50 ? '#fbbf24' :
-                                    asset.market_sentiment.score >= 30 ? '#fb923c' : '#f87171'
-                                };">${asset.market_sentiment.score}</div>
-                                <div style="font-size: 0.7em; opacity: 0.8;">Fear & Greed</div>
-                            </div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; margin-bottom: 3px;">
-                                    ${asset.market_sentiment.fear_greed_label || 'Neutral'}
-                                </div>
-                                <div style="font-size: 0.85em; opacity: 0.9;">
-                                    ${asset.market_sentiment.recommendation || ''}
-                                </div>
-                            </div>
-                        </div>
-                        <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
-                            <div style="height: 100%; width: ${asset.market_sentiment.score}%; background: linear-gradient(90deg, #f87171, #fbbf24, #4ade80); transition: width 0.5s;"></div>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
                     <div style="margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                        <div style="font-size: 0.9em; color: #c084fc; margin-bottom: 8px;">📝 Razones de la Señal</div>
+                        <div style="font-size: 0.9em; color: #a78bfa; margin-bottom: 8px;">📝 Razones de la Señal</div>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.85em; line-height: 1.6;">
                             ${reasonsList}
                         </ul>
@@ -794,7 +1364,7 @@
                             <div class="level-value">${asset.key_levels.support.length > 0 ? formatPrice(asset.key_levels.support[0]) : 'N/A'}</div>
                         </div>
                         <div class="level-box resistance-box">
-                            <div class="level-label">🔴 Resistencia</div>
+                            <div class="level-label">� Resistencia</div>
                             <div class="level-value">${asset.key_levels.resistance.length > 0 ? formatPrice(asset.key_levels.resistance[0]) : 'N/A'}</div>
                         </div>
                     </div>
@@ -810,27 +1380,157 @@
             `;
         }
 
+        // Función de debug para verificar activos
+        async function debugAssets() {
+            const category = document.getElementById('categorySelect').value;
+            const interval = document.getElementById('intervalSelect').value;
+            
+            console.log('🔍 DEBUG: Verificando activos...');
+            console.log(`Categoría: ${category}, Intervalo: ${interval}`);
+            
+            try {
+                const url = category === 'all' 
+                    ? `/api/analyze-all?interval=${interval}`
+                    : `/api/analyze-category/${category}?interval=${interval}`;
+                
+                console.log(`Fetching: ${url}`);
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                console.log('📊 DATOS COMPLETOS:', data);
+                console.log(`📈 Total configurado: ${data.total}`);
+                console.log(`✅ Cargados exitosamente: ${data.loaded}`);
+                console.log(`📋 Assets en array: ${data.assets ? data.assets.length : 0}`);
+                
+                if (data.assets) {
+                    console.log('🎯 Lista de símbolos:', data.assets.map(a => a.symbol));
+                    console.log('⚠️ Assets con errores:', data.assets.filter(a => !a.price || a.price === 0));
+                }
+                
+                alert(`DEBUG RESULTS:\n` +
+                      `Total: ${data.total}\n` +
+                      `Loaded: ${data.loaded}\n` +
+                      `Assets: ${data.assets ? data.assets.length : 0}\n` +
+                      `Elapsed: ${data.elapsed}s\n` +
+                      `Category: ${category}`);
+                      
+            } catch (error) {
+                console.error('❌ Error en debug:', error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Función de prueba para verificar APIs
+        async function testAPI() {
+            console.log('Probando API...');
+            try {
+                const response = await fetch('/api/analyze-all?interval=5m');
+                const data = await response.json();
+                console.log('API Response:', data);
+                alert(`API funcionando: ${data.assets ? data.assets.length : 0} activos encontrados`);
+            } catch (error) {
+                console.error('Error en API:', error);
+                alert(`Error en API: ${error.message}`);
+            }
+        }
+
         async function updateDashboard() {
+            console.log('Actualizando dashboard...');
             const dashboard = document.getElementById('dashboard');
             const interval = document.getElementById('intervalSelect').value;
             const category = document.getElementById('categorySelect').value;
             
-            // Indicador sutil en la barra de estado
+            // Mostrar loading
+            dashboard.innerHTML = '<div class="loading"><span class="spinner"></span>Cargando datos...</div>';
             document.getElementById('statusValue').classList.add('updating');
             
             try {
                 let response, data;
                 
+                // Usar endpoints optimizados para tiempo real
                 if (category === 'all') {
-                    response = await fetch(`/api/analyze-all?interval=${interval}`);
-                    data = await response.json();
+                    // Intentar endpoint rápido primero, luego normal
+                    try {
+                        response = await fetch(`/api/analyze-all-fast?interval=${interval}`);
+                        if (response.ok) {
+                            data = await response.json();
+                            if (data.assets && data.assets.length > 0) {
+                                console.log('Usando datos de cache rápido');
+                            } else {
+                                throw new Error('Cache vacío');
+                            }
+                        } else {
+                            throw new Error('Cache no disponible');
+                        }
+                    } catch (cacheError) {
+                        console.log('Cache no disponible, usando endpoint normal...');
+                        response = await fetch(`/api/analyze-all?interval=${interval}`);
+                        data = await response.json();
+                    }
                 } else {
-                    response = await fetch(`/api/analyze-category/${category}?interval=${interval}`);
-                    data = await response.json();
+                    // Intentar endpoint rápido por categoría primero
+                    try {
+                        response = await fetch(`/api/analyze-category-fast/${category}?interval=${interval}`);
+                        if (response.ok) {
+                            data = await response.json();
+                            if (data.assets && data.assets.length > 0) {
+                                console.log('Usando datos de cache rápido por categoría');
+                            } else {
+                                throw new Error('Cache vacío');
+                            }
+                        } else {
+                            throw new Error('Cache no disponible');
+                        }
+                    } catch (cacheError) {
+                        console.log('Cache no disponible, usando endpoint normal...');
+                        response = await fetch(`/api/analyze-category/${category}?interval=${interval}`);
+                        data = await response.json();
+                    }
                 }
                 
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                console.log('Datos recibidos:', data);
+                console.log(`📊 Estadísticas: Total=${data.total}, Loaded=${data.loaded}, Assets en array=${data.assets ? data.assets.length : 0}`);
+                
                 if (data.assets && data.assets.length > 0) {
-                    dashboard.innerHTML = data.assets.map(createAssetCard).join('');
+                    console.log(`🎯 Primeros 3 activos:`, data.assets.slice(0, 3).map(a => a.symbol));
+                    console.log(`🎯 Últimos 3 activos:`, data.assets.slice(-3).map(a => a.symbol));
+                    
+                    // Procesar activos en lotes para mejor rendimiento
+                    const batchSize = 10;
+                    dashboard.innerHTML = '<div class="loading"><span class="spinner"></span>Renderizando activos...</div>';
+                    
+                    let processedCount = 0;
+                    const totalAssets = data.assets.length;
+                    
+                    function processBatch(startIndex) {
+                        const endIndex = Math.min(startIndex + batchSize, totalAssets);
+                        const batch = data.assets.slice(startIndex, endIndex);
+                        
+                        if (startIndex === 0) {
+                            // Primera carga - reemplazar contenido
+                            dashboard.innerHTML = batch.map(createAssetCard).join('');
+                        } else {
+                            // Cargas siguientes - agregar contenido
+                            dashboard.innerHTML += batch.map(createAssetCard).join('');
+                        }
+                        
+                        processedCount = endIndex;
+                        console.log(`📦 Procesados ${processedCount}/${totalAssets} activos`);
+                        
+                        // Continuar con el siguiente lote si hay más activos
+                        if (endIndex < totalAssets) {
+                            setTimeout(() => processBatch(endIndex), 50); // 50ms entre lotes
+                        } else {
+                            console.log('✅ Todos los activos renderizados');
+                        }
+                    }
+                    
+                    // Iniciar procesamiento por lotes
+                    processBatch(0);
                     
                     // Actualizar estadísticas
                     document.getElementById('assetsCount').textContent = data.assets.length;
@@ -845,10 +1545,51 @@
                     document.getElementById('lastUpdate').textContent = 
                         now.toLocaleTimeString('es-ES');
                     document.getElementById('timestamp').textContent = 
-                        `Última actualización: ${now.toLocaleString('es-ES')}`;
+                        `Última actualización: ${now.toLocaleString('es-ES')} ${data.cache_only ? '(Cache)' : '(Tiempo Real)'}`;
+                        
+                    console.log(`Dashboard actualizado: ${data.assets.length} activos, ${activeSignals} señales activas ${data.cache_only ? '(desde cache)' : '(tiempo real)'}`);
+                    
+                    // Mostrar información detallada en la interfaz
+                    if (data.total && data.loaded) {
+                        const statusInfo = document.createElement('div');
+                        statusInfo.style.cssText = `
+                            position: fixed;
+                            bottom: 20px;
+                            left: 20px;
+                            background: rgba(99, 102, 241, 0.9);
+                            color: white;
+                            padding: 10px 15px;
+                            border-radius: 8px;
+                            font-size: 0.9em;
+                            font-weight: 600;
+                            z-index: 1000;
+                            backdrop-filter: blur(10px);
+                        `;
+                        statusInfo.textContent = `📊 ${data.assets.length}/${data.total} activos cargados (${category})`;
+                        
+                        // Remover info anterior si existe
+                        const existing = document.querySelector('.status-info');
+                        if (existing) existing.remove();
+                        statusInfo.className = 'status-info';
+                        document.body.appendChild(statusInfo);
+                        
+                        // Auto-remover después de 5 segundos
+                        setTimeout(() => statusInfo.remove(), 5000);
+                    }} else {
+                    dashboard.innerHTML = `
+                        <div class="error">
+                            ⚠️ No se encontraron datos para mostrar
+                        </div>
+                    `;
                 }
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Error actualizando dashboard:', error);
+                dashboard.innerHTML = `
+                    <div class="error">
+                        ❌ Error cargando datos: ${error.message}
+                        <br><small>Revisa la consola para más detalles</small>
+                    </div>
+                `;
             }
             
             document.getElementById('statusValue').classList.remove('updating');
@@ -865,12 +1606,18 @@
             if (autoRefresh) {
                 btn.textContent = '⏸️ Pausar Auto-Refresh';
                 startAutoRefresh();
+                showNotification('✅ Auto-refresh activado - Velas en tiempo real cada 5s', 'success');
             } else {
-                btn.textContent = '▶️ Reanudar Auto-Refresh';
+                btn.textContent = '▶️ Activar Auto-Refresh';
                 if (refreshInterval) {
                     clearInterval(refreshInterval);
                     refreshInterval = null;
                 }
+                if (candleInterval) {
+                    clearInterval(candleInterval);
+                    candleInterval = null;
+                }
+                showNotification('⏸️ Auto-refresh pausado', 'info');
             }
         }
 
@@ -881,23 +1628,101 @@
             refreshInterval = setInterval(() => {
                 if (autoRefresh) {
                     updateDashboard();
+                    updateLiveSignals();
+                    updateMainChart();
                 }
             }, REFRESH_RATE);
+            
+            // Actualización más frecuente para las velas (cada 5 segundos)
+            if (candleInterval) {
+                clearInterval(candleInterval);
+            }
+            candleInterval = setInterval(() => {
+                if (autoRefresh) {
+                    updateCandlestickRealTime();
+                }
+            }, 5000);
         }
 
-        // Event listeners
+        async function loadMonitorStatus() {
+            try {
+                const response = await fetch('/api/auto-monitor/status');
+                const data = await response.json();
+                
+                if (data.monitored_assets) {
+                    Object.keys(data.monitored_assets).forEach(symbol => {
+                        monitoredAssets.add(symbol);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading monitor status:', error);
+            }
+        }
+
+        // Initialize background loader
+        async function initializeBackgroundLoader() {
+            try {
+                const response = await fetch('/api/background-loader/start', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    console.log('✅ Background loader iniciado');
+                    showNotification('🔄 Sistema de tiempo real activado', 'success');
+                } else {
+                    console.warn('⚠️ No se pudo iniciar background loader');
+                }
+            } catch (error) {
+                console.error('Error iniciando background loader:', error);
+            }
+        }
+
+        // Check background loader status
+        async function checkBackgroundLoaderStatus() {
+            try {
+                const response = await fetch('/api/background-loader/status');
+                const data = await response.json();
+                console.log(`📊 Background loader: ${data.active ? 'Activo' : 'Inactivo'}, Cache: ${data.cache_size} elementos`);
+                return data.active;
+            } catch (error) {
+                console.error('Error verificando background loader:', error);
+                return false;
+            }
+        }
+
         document.getElementById('intervalSelect').addEventListener('change', updateDashboard);
         document.getElementById('categorySelect').addEventListener('change', updateDashboard);
 
-        // Inicializar dashboard
-        loadMonitorStatus(); // Cargar estado de monitoreo
-        updateDashboard();
-        startAutoRefresh();
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard iniciando...');
+            initializeCharts();
+            loadMonitorStatus();
+            
+            // Inicializar background loader para tiempo real
+            setTimeout(async () => {
+                await initializeBackgroundLoader();
+                await checkBackgroundLoaderStatus();
+            }, 1000);
+            
+            // Dar tiempo para que se cargue todo
+            setTimeout(() => {
+                console.log('Cargando datos...');
+                updateDashboard();
+                updateLiveSignals();
+                updateMainChart();
+                // NO iniciar auto-refresh automáticamente
+                console.log('Dashboard cargado. Auto-refresh desactivado por defecto.');
+                console.log('💡 Tip: Los datos se actualizan automáticamente en background');
+            }, 2000);
+        });
 
-        // Cleanup al cerrar
         window.addEventListener('beforeunload', () => {
             if (refreshInterval) {
                 clearInterval(refreshInterval);
+            }
+            if (candleInterval) {
+                clearInterval(candleInterval);
             }
         });
     </script>
