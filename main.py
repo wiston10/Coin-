@@ -33,11 +33,11 @@ def main():
     choice = input("Selecciona una opción (1-4): ").strip()
     
     if choice == "1":
-        from src.gui.dashboard import app
+        from src.gui.dashboard import app, SERVER_HOST, SERVER_PORT
         print("\n🌐 Iniciando Dashboard Web...")
-        print("   URL: http://localhost:8080")
+        print(f"   URL: http://localhost:{SERVER_PORT}")
         print("   Presiona Ctrl+C para detener\n")
-        app.run(host='0.0.0.0', port=8080, debug=False)
+        app.run(host=SERVER_HOST, port=SERVER_PORT, debug=False, threaded=True)
     elif choice == "2":
         from src.core.trading_app import main as app_main
         print("\n⚡ Iniciando interfaz de terminal...\n")

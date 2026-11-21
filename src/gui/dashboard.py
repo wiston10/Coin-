@@ -5,11 +5,9 @@ Muestra análisis de múltiples activos con actualización automática
 """
 
 from flask import Flask, render_template, jsonify, request
-from flask import Flask, render_template, jsonify, request, redirect
 from flask_cors import CORS
 
-
-
+import os
 import threading
 import time
 from datetime import datetime
@@ -23,6 +21,12 @@ from src.indicators.technical_indicators import calculate_adaptive_indicators
 from src.strategies.bounce_strategy import analyze_bounce_opportunity
 from src.core.trading_signals import TradingSignalEngine
 from src.webhooks.webhook_notifier import WebhookNotifier
+from src.env_loader import load_env, env_flag
+
+load_env()
+LIVE_TRADING_ENABLED = env_flag('ENABLE_LIVE_TRADING', False)
+SERVER_HOST = os.environ.get('DASHBOARD_HOST', '127.0.0.1')
+SERVER_PORT = int(os.environ.get('DASHBOARD_PORT', '8080'))
 
 # Importar fuentes extendidas
 try:
@@ -41,7 +45,9 @@ base_dir = Path(__file__).parent.parent.parent
 template_dir = base_dir / 'templates'
 
 app = Flask(__name__, template_folder=str(template_dir))
-CORS(app)
+# Solo se permiten peticiones desde el propio dashboard (evita que otra web
+# abierta en tu navegador pueda llamar a la API)
+CORS(app, origins=[r"http://localhost:\d+", r"http://127\.0\.0\.1:\d+"])
 
 # Sistema de webhooks global
 webhook_notifier = WebhookNotifier()
@@ -57,6 +63,10 @@ try:
                 name=webhook.get('name', 'Telegram')
             )
             print(f"✅ Webhook de Telegram cargado: {webhook.get('name', 'Telegram')}")
+    from src.webhooks import webhook_config as _wcfg
+    webhook_notifier.enabled = getattr(_wcfg, 'WEBHOOKS_ENABLED', True)
+    webhook_notifier.min_confidence = getattr(_wcfg, 'MIN_CONFIDENCE', webhook_notifier.min_confidence)
+    webhook_notifier.cooldown_duration = getattr(_wcfg, 'COOLDOWN_DURATION', webhook_notifier.cooldown_duration)
 except ImportError:
     print("⚠️ No se encontró configuración de webhooks de Telegram")
 except Exception as e:
@@ -64,7 +74,7 @@ except Exception as e:
 
 # Sistema de monitoreo automático
 auto_monitor = {
-    'active': {},  # {symbol: {'thread': thread_obj, 'stop_flag': bool, 'interval': str, 'started_at': datetime}}
+    'active': {},  # {symbol: {'thread': thread_obj, 'stop_event': threading.Event, 'interval': str, 'started_at': str}}
     'lock': threading.Lock()
 }
 
@@ -272,6 +282,11 @@ def analyze_asset(symbol, interval='5m', use_binomo_fallback=False):
         if df is None or len(df) == 0:
             return None
         
+        # Nunca generar señales a partir de datos simulados (aleatorios)
+        if 'source' in df.columns and 'simulation' in str(df['source'].iloc[-1]):
+            print(f"⚠️ {symbol}: solo hay datos simulados, se omite el análisis")
+            return None
+        
         # Calcular indicadores
         df = calculate_adaptive_indicators(df, interval)
         
@@ -287,7 +302,7 @@ def analyze_asset(symbol, interval='5m', use_binomo_fallback=False):
         
         # Fallback al ticker si no hay datos agregados
         if current_price is None or current_price == 0:
-            current_price = ticker.get('price', df['Close'].iloc[-1])
+            current_price = ticker.get('price') or df['Close'].iloc[-1]
             data_quality = 'Unknown'
             data_confidence = 0.5
             sources_used = 1
@@ -341,7 +356,7 @@ def analyze_asset(symbol, interval='5m', use_binomo_fallback=False):
         else:
             volume_status = 'NORMAL'
         
-            # Detectar tipo de activo y fuente de datos
+        # Detectar tipo de activo y fuente de datos
         asset_type = hybrid_source.detect_asset_type(symbol)
         data_source = df['source'].iloc[-1] if 'source' in df.columns else 'unknown'
         
@@ -432,9 +447,9 @@ def analyze_asset(symbol, interval='5m', use_binomo_fallback=False):
         if result['signal'] in ['BUY', 'SELL'] and result['confidence'] >= webhook_notifier.min_confidence:
             # Frase de acción destacada
             if result['signal'] == 'BUY':
-                action_phrase = '🚀 ENTRA A COMPRAR EN EL PRÓXIMO MINUTO';
+                action_phrase = '🚀 ENTRA A COMPRAR EN EL PRÓXIMO MINUTO'
             elif result['signal'] == 'SELL':
-                action_phrase = '⚡ ENTRA A VENDER EN EL PRÓXIMO MINUTO';
+                action_phrase = '⚡ ENTRA A VENDER EN EL PRÓXIMO MINUTO'
             else:
                 action_phrase = ''
             webhook_data = {
@@ -517,7 +532,14 @@ from src.trading.web_trader_bot import WebTraderBot
 # Endpoint para ejecutar trade automático desde la interfaz
 @app.route('/api/trade', methods=['POST'])
 def api_trade():
-    data = request.json
+    if not LIVE_TRADING_ENABLED:
+        return jsonify({
+            'success': False,
+            'error': 'Trading automático desactivado. Activa ENABLE_LIVE_TRADING=true en .env bajo tu propio riesgo.'
+        }), 403
+    if request.remote_addr not in ('127.0.0.1', '::1'):
+        return jsonify({'success': False, 'error': 'Solo permitido desde este ordenador'}), 403
+    data = request.get_json(silent=True) or {}
     email = data.get('email')
     password = data.get('password')
     platform = data.get('platform')
@@ -545,6 +567,10 @@ def api_trade():
         bot.close()
         return jsonify({'success': True, 'trade_result': result, 'stats': stats})
     except Exception as e:
+        try:
+            bot.close()
+        except Exception:
+            pass
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -617,7 +643,7 @@ def analyze_category(category):
         
     except Exception as e:
         logging.error(f"Error en analyze_category: {e}\n{traceback.format_exc()}")
-        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/analyze-category-fast/<category>')
@@ -667,7 +693,7 @@ def analyze(symbol):
             return jsonify({'error': 'No se pudieron obtener datos'}), 500
     except Exception as e:
         logging.error(f"Error en analyze({symbol}): {e}\n{traceback.format_exc()}")
-        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/compare-sources/<symbol>')
@@ -731,7 +757,7 @@ def analyze_all():
         
     except Exception as e:
         logging.error(f"Error en analyze_all: {e}\n{traceback.format_exc()}")
-        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/analyze-all-fast')
@@ -796,17 +822,6 @@ def get_available_assets():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/compare-sources/<symbol>')
-def compare_sources(symbol):
-    """Compara datos de diferentes fuentes (solo crypto)"""
-    try:
-        interval = request.args.get('interval', '5m')
-        comparison = hybrid_source.compare_sources(symbol, interval)
-        return jsonify(comparison)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 @app.route('/api/price-quality/<symbol>')
 def get_price_quality(symbol):
     """Obtiene precio agregado de múltiples fuentes con información de calidad"""
@@ -837,8 +852,10 @@ def webhook_config():
         return jsonify(stats)
     
     elif request.method == 'POST':
+        if request.remote_addr not in ('127.0.0.1', '::1'):
+            return jsonify({'error': 'Solo permitido desde este ordenador'}), 403
         # Agregar o modificar webhook
-        data = request.json
+        data = request.get_json(silent=True) or {}
         webhook_type = data.get('type')
         
         try:
@@ -879,8 +896,8 @@ def webhook_config():
 @app.route('/api/webhooks/toggle', methods=['POST'])
 def webhook_toggle():
     """Activa/desactiva webhooks"""
-    data = request.json
-    webhook_notifier.enabled = data.get('enabled', True)
+    data = request.get_json(silent=True) or {}
+    webhook_notifier.enabled = bool(data.get('enabled', True))
     
     return jsonify({
         'success': True,
@@ -912,19 +929,13 @@ def webhook_test():
     })
 
 
-def monitor_asset_loop(symbol, interval='5m'):
+def monitor_asset_loop(symbol, interval, stop_event):
     """Función que monitorea un activo y envía notificaciones cada minuto"""
     print(f"🔔 Iniciando monitoreo automático: {symbol} ({interval})")
     
-    while True:
-        # Verificar si debe detenerse
-        with auto_monitor['lock']:
-            if symbol not in auto_monitor['active'] or auto_monitor['active'][symbol]['stop_flag']:
-                print(f"⏹️  Deteniendo monitoreo: {symbol}")
-                break
-        
+    while not stop_event.is_set():
         try:
-            # Analizar activo
+            # Analizar activo (analyze_asset descarta datos simulados)
             result = analyze_asset(symbol, interval, use_binomo_fallback=True)
             
             if result:
@@ -955,14 +966,16 @@ def monitor_asset_loop(symbol, interval='5m'):
         except Exception as e:
             print(f"❌ Error monitoreando {symbol}: {e}")
         
-        # Esperar 60 segundos antes de la próxima notificación
-        time.sleep(60)
+        # Esperar 60 segundos (se interrumpe al instante si se pide parar)
+        stop_event.wait(60)
+    
+    print(f"⏹️  Monitoreo detenido: {symbol}")
 
 
 @app.route('/api/auto-monitor/start', methods=['POST'])
 def start_auto_monitor():
     """Inicia monitoreo automático de un activo"""
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     symbol = data.get('symbol')
     interval = data.get('interval', '5m')
     
@@ -970,22 +983,20 @@ def start_auto_monitor():
         return jsonify({'error': 'Symbol is required'}), 400
     
     with auto_monitor['lock']:
-        # Si ya está monitoreando, detenerlo primero
+        # Si ya está monitoreando, detener el hilo anterior (evita alertas duplicadas)
         if symbol in auto_monitor['active']:
-            auto_monitor['active'][symbol]['stop_flag'] = True
-            time.sleep(0.5)  # Dar tiempo para que se detenga
+            auto_monitor['active'][symbol]['stop_event'].set()
         
-        # Crear nuevo thread de monitoreo
-        stop_flag = False
+        stop_event = threading.Event()
         thread = threading.Thread(
             target=monitor_asset_loop,
-            args=(symbol, interval),
+            args=(symbol, interval, stop_event),
             daemon=True
         )
         
         auto_monitor['active'][symbol] = {
             'thread': thread,
-            'stop_flag': stop_flag,
+            'stop_event': stop_event,
             'interval': interval,
             'started_at': datetime.now().isoformat()
         }
@@ -1003,7 +1014,7 @@ def start_auto_monitor():
 @app.route('/api/auto-monitor/stop', methods=['POST'])
 def stop_auto_monitor():
     """Detiene monitoreo automático de un activo"""
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     symbol = data.get('symbol')
     
     if not symbol:
@@ -1011,7 +1022,7 @@ def stop_auto_monitor():
     
     with auto_monitor['lock']:
         if symbol in auto_monitor['active']:
-            auto_monitor['active'][symbol]['stop_flag'] = True
+            auto_monitor['active'][symbol]['stop_event'].set()
             del auto_monitor['active'][symbol]
             
             return jsonify({
@@ -1033,7 +1044,7 @@ def get_auto_monitor_status():
     with auto_monitor['lock']:
         status = {}
         for symbol, info in auto_monitor['active'].items():
-            if not info['stop_flag']:
+            if not info['stop_event'].is_set():
                 status[symbol] = {
                     'interval': info['interval'],
                     'started_at': info['started_at'],
@@ -1076,11 +1087,15 @@ def background_loader_status():
         'cache_size': len(cache['data']),
         'cache_keys': list(cache['data'].keys())[:10]  # Primeras 10 keys
     })
+
+
+@app.route('/api/health')
+def health():
     """Endpoint de salud"""
     webhook_stats = webhook_notifier.get_stats()
     
     with auto_monitor['lock']:
-        monitored_count = sum(1 for info in auto_monitor['active'].values() if not info['stop_flag'])
+        monitored_count = sum(1 for info in auto_monitor['active'].values() if not info['stop_event'].is_set())
     
     return jsonify({
         'status': 'healthy',
@@ -1097,7 +1112,7 @@ def run_dashboard(host='127.0.0.1', port=5000, debug=False):
     """Inicia el servidor del dashboard"""
     # Cargar webhooks desde configuración
     try:
-        from setup_webhooks import load_webhooks_from_config
+        from src.webhooks.setup_webhooks import load_webhooks_from_config
         load_webhooks_from_config(webhook_notifier)
     except Exception as e:
         print(f"ℹ️  Webhooks no configurados: {e}")

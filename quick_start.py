@@ -13,4 +13,4 @@ def index():
 
 if __name__ == '__main__':
     print("Dashboard iniciando en http://localhost:8080")
-    app_instance.run(host='0.0.0.0', port=8080)
+    app_instance.run(host='127.0.0.1', port=8080)

@@ -7,14 +7,14 @@ GUÍA RÁPIDA DE USO - Sistema de Análisis de Trading
 # ============================================================================
 
 # 1. Instalar dependencias
-pip3 install -r requirements.txt
+#   pip3 install -r requirements.txt
 
 # ============================================================================
 # USO BÁSICO
 # ============================================================================
 
 # OPCIÓN 1: Usar la aplicación interactiva
-python3 trading_app.py
+#   python3 main.py
 
 # OPCIÓN 2: Usar desde código Python
 import sys

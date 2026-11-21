@@ -1,4 +1,8 @@
 # Configuración de Webhooks para Telegram
+import os
+from src.env_loader import load_env
+
+load_env()
 # Este archivo contiene la configuración para enviar alertas de trading a tu grupo
 
 # ============================================================================
@@ -10,7 +14,8 @@
 # 2. Envía el comando: /newbot
 # 3. Dale un nombre y username a tu bot
 # 4. BotFather te dará un TOKEN como: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz
-# 5. COPIA ESE TOKEN y ponlo abajo en 'bot_token'
+# 5. COPIA ESE TOKEN en el archivo .env como TELEGRAM_BOT_TOKEN=...
+#    (copia .env.example a .env; .env está en .gitignore y no se sube a GitHub)
 
 # PASO 2: Agregar el bot a tu grupo
 # 1. Ve a tu grupo de Telegram
@@ -23,21 +28,21 @@
 # 2. Ve a esta URL en tu navegador (reemplaza TU_BOT_TOKEN):
 #    https://api.telegram.org/botTU_BOT_TOKEN/getUpdates
 # 3. Busca "chat":{"id": y verás un número negativo (ej: -1001234567890)
-# 4. ESE ES TU chat_id, cópialo y ponlo abajo
+# 4. ESE ES TU chat_id, ponlo en .env como TELEGRAM_CHAT_ID=...
 
 TELEGRAM_WEBHOOKS = [
     {
         # Token del bot (de @BotFather)
-        'bot_token': '7007362980:AAFg--LR1x-tC9n5XCJpkDn5cZbWziMxo6I',
+        'bot_token': os.environ.get('TELEGRAM_BOT_TOKEN', ''),  # definir en .env, NUNCA en el código
         
         # ID del grupo (número negativo, ej: -1001234567890)
-        'chat_id': '-5041951162',
+        'chat_id': os.environ.get('TELEGRAM_CHAT_ID', ''),
         
         # Nombre descriptivo
         'name': 'Bot',
         
         # Mantener en True para activar
-        'enabled': True
+        'enabled': bool(os.environ.get('TELEGRAM_BOT_TOKEN')),
     }
 ]
 

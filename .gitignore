@@ -50,3 +50,7 @@ cache/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Secretos y archivos de ejecución
+.env
+*.pid

@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 print("📦 Importando módulos...", flush=True)
 try:
-    from src.gui.dashboard import app
+    from src.gui.dashboard import app, SERVER_HOST, SERVER_PORT
     from src.data_sources.hybrid_data_source import HybridDataSource
     print("✅ Módulos importados correctamente", flush=True)
 except Exception as e:
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     print("  ✓ Gráficos y análisis completo")
     
     print("\n🌐 Iniciando servidor web...")
-    print("   URL: http://localhost:8080")
+    print(f"   URL: http://localhost:{SERVER_PORT}")
     print("   Presiona Ctrl+C para detener")
     
     print("\n📡 Endpoints multi-broker disponibles:")
@@ -149,7 +149,7 @@ if __name__ == '__main__':
     print("\n" + "=" * 80 + "\n")
     
     try:
-        app.run(host='0.0.0.0', port=8080, debug=False)
+        app.run(host=SERVER_HOST, port=SERVER_PORT, debug=False, threaded=True)
     except KeyboardInterrupt:
         print("\n\n👋 Dashboard detenido. ¡Hasta luego!\n")
         sys.exit(0)

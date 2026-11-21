@@ -36,6 +36,8 @@ class TechnicalIndicators:
         
         rs = gain / loss
         rsi = 100 - (100 / (1 + rs))
+        # Mercado plano (sin subidas ni bajadas): RSI neutral en vez de NaN
+        rsi = rsi.mask((gain == 0) & (loss == 0), 50.0)
         
         return rsi
     

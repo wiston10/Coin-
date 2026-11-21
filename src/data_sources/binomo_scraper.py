@@ -11,6 +11,9 @@ import json
 import time
 from bs4 import BeautifulSoup
 import warnings
+from src.env_loader import load_env, env_flag
+
+load_env()
 warnings.filterwarnings('ignore')
 
 
@@ -115,10 +118,12 @@ class BinomoScraper:
             
             # Generar velas sintéticas con variación realista
             candles = []
-            interval_minutes = int(interval.replace('m', '').replace('h', '60'))
+            unit, value = interval[-1], int(interval[:-1])
+            interval_minutes = value * {'m': 1, 'h': 60, 'd': 1440}.get(unit, 1)
             
+            now = datetime.now()
             for i in range(limit):
-                timestamp = datetime.now() - timedelta(minutes=interval_minutes * (limit - i))
+                timestamp = now - timedelta(minutes=interval_minutes * (limit - i))
                 
                 # Variación aleatoria pero realista
                 variation = np.random.randn() * base_price * 0.002  # 0.2% de variación
@@ -197,8 +202,9 @@ class BinomoScraper:
         # Intentar obtener de API
         df = self.get_candles_api(symbol, interval, limit)
         
-        # Si falla, usar simulación
-        if df is None:
+        # Si falla, usar simulación SOLO si se permite explícitamente.
+        # Los datos simulados son aleatorios: no sirven para operar.
+        if df is None and env_flag('ALLOW_SIMULATED_DATA', False):
             df = self.get_candles_websocket_simulation(symbol, interval, limit)
         
         # Guardar en caché

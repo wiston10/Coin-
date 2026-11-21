@@ -9,3 +9,7 @@ requests>=2.31.0
 ccxt>=4.0.0
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
+
+# Opcional: solo para el bot de trading web (src/trading/web_trader_bot.py)
+# selenium>=4.15.0
+# webdriver-manager>=4.0.0

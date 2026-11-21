@@ -20,12 +20,12 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 print("Importando módulos...")
 try:
-    from src.gui.dashboard import app
+    from src.gui.dashboard import app, SERVER_HOST, SERVER_PORT
     print("✅ App importada")
     
-    print("\nIniciando servidor en http://localhost:8080")
+    print(f"\nIniciando servidor en http://localhost:{SERVER_PORT}")
     print("Log guardado en: dashboard.log")
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    app.run(host=SERVER_HOST, port=SERVER_PORT, debug=False, threaded=True)
     
 except Exception as e:
     print(f"❌ ERROR: {e}")

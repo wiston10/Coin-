@@ -106,6 +106,29 @@ coin/
     └── dashboard.html
 ```
 
+## 🔐 Configuración (archivo `.env`)
+
+Las claves ya **no** van dentro del código. Copia la plantilla y rellénala:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Para qué sirve | Por defecto |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Alertas a tu grupo de Telegram | vacío (alertas apagadas) |
+| `DASHBOARD_HOST` / `DASHBOARD_PORT` | Dónde escucha el dashboard | `127.0.0.1` / `8080` |
+| `ENABLE_LIVE_TRADING` | Permite que `/api/trade` opere con dinero real vía Selenium | `false` |
+| `ALLOW_SIMULATED_DATA` | Permite velas simuladas (aleatorias) de Binomo. Nunca se usan para señales | `false` |
+
+`.env` está en `.gitignore`, así que no se sube a GitHub.
+
+### Tests
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
 ## 🚀 Inicio Rápido
 
 ### Instalación
