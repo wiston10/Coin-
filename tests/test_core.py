@@ -67,6 +67,37 @@ class TestStrategy(unittest.TestCase):
                 self.assertLess(r['take_profit'], r['entry_price'])
 
 
+class TestLevels(unittest.TestCase):
+    def test_support_below_resistance_above(self):
+        from src.strategies.bounce_strategy import BounceStrategy
+        for seed in range(10):
+            df = make_df(seed=seed)
+            price = df['Close'].iloc[-1]
+            sup, res = BounceStrategy()._identify_key_levels(df)
+            self.assertTrue(all(l < price for l in sup))
+            self.assertTrue(all(l > price for l in res))
+            self.assertEqual(sup, sorted(sup, reverse=True))  # más cercano primero
+            self.assertEqual(res, sorted(res))
+
+    def test_no_buy_bias_on_random_prices(self):
+        import io, contextlib
+        rng = np.random.default_rng(1)
+        counts = {'BUY': 0, 'SELL': 0, 'HOLD': 0}
+        for _ in range(80):
+            n = 400
+            p = 100 * np.exp(np.cumsum(rng.standard_normal(n) * 0.003))
+            o = np.r_[p[0], p[:-1]]
+            df = pd.DataFrame({'Open': o, 'High': np.maximum(o, p) * 1.001,
+                               'Low': np.minimum(o, p) * 0.999, 'Close': p,
+                               'Volume': rng.lognormal(8, 0.5, n)})
+            with contextlib.redirect_stdout(io.StringIO()):
+                r = analyze_bounce_opportunity(calculate_adaptive_indicators(df, '5m'), '5m')
+            counts[r['signal']] += 1
+        buys, sells = counts['BUY'], counts['SELL']
+        self.assertGreater(sells, 0)
+        self.assertLess(max(buys, sells) / max(1, min(buys, sells)), 3)
+
+
 class TestSafety(unittest.TestCase):
     def test_no_hardcoded_telegram_token(self):
         text = (ROOT / 'src' / 'webhooks' / 'webhook_config.py').read_text()

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 # Agregar src al path de Python
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
 def main():
@@ -33,31 +33,23 @@ def main():
     choice = input("Selecciona una opción (1-4): ").strip()
     
     if choice == "1":
-        from src.gui.dashboard import app, SERVER_HOST, SERVER_PORT
-        print("\n🌐 Iniciando Dashboard Web...")
-        print(f"   URL: http://localhost:{SERVER_PORT}")
-        print("   Presiona Ctrl+C para detener\n")
-        app.run(host=SERVER_HOST, port=SERVER_PORT, debug=False, threaded=True)
+        import run_gui
+        sys.argv = [sys.argv[0]]
+        run_gui.main()
     elif choice == "2":
         from src.core.trading_app import main as app_main
         print("\n⚡ Iniciando interfaz de terminal...\n")
         app_main()
     elif choice == "3":
         print("\n📚 Ejemplos disponibles en la carpeta 'examples/':")
-        print("  • quick_start.py - Guía rápida de inicio")
-        print("  • ejemplo_rebotes.py - Estrategia de rebotes")
-        print("  • ejemplos_avanzados.py - Ejemplos avanzados")
-        print("  • ejemplos_binomo.py - Integración con Binomo")
-        print("  • ejemplos_hibridos.py - Datos híbridos")
-        print("  • ejemplos_live.py - Trading en vivo")
-        print("  • ejemplos_webhooks.py - Notificaciones webhook")
-        print("\nEjecútalos con: python3 examples/nombre_ejemplo.py")
+        print("  • quick_start.py       - Guía rápida de uso desde código")
+        print("  • demo_multi_broker.py - Demo de agregación multi-fuente")
+        print("\nEjecútalos con: python3 examples/<nombre>.py")
     elif choice == "4":
         print("\n👋 ¡Hasta luego!\n")
         sys.exit(0)
     else:
-        print("\n❌ Opción inválida. Intenta de nuevo.\n")
-        main()
+        print("\n❌ Opción inválida. Ejecuta de nuevo: python3 main.py\n")
 
 
 if __name__ == "__main__":

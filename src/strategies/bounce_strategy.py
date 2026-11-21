@@ -74,6 +74,13 @@ class BounceStrategy:
         current_price = df['Close'].iloc[-1]
         near_support = self._is_near_level(current_price, support_levels, tolerance=0.005)
         near_resistance = self._is_near_level(current_price, resistance_levels, tolerance=0.005)
+        # Si está cerca de ambos, quedarse solo con el nivel más cercano
+        # (antes siempre ganaba el soporte y la estrategia sesgaba a COMPRA)
+        if near_support['is_near'] and near_resistance['is_near']:
+            if near_support['distance_pct'] <= near_resistance['distance_pct']:
+                near_resistance = {'is_near': False, 'level': None, 'distance_pct': None}
+            else:
+                near_support = {'is_near': False, 'level': None, 'distance_pct': None}
         
         # 3. Analizar patrón de vela actual
         current_pattern, pattern_signal = self.pattern_detector.get_current_pattern(df)
@@ -139,9 +146,17 @@ class BounceStrategy:
         # Método 3: Niveles de volumen
         volume_levels = self._find_volume_levels(df_lookback)
         
-        # Combinar todos los niveles
-        resistance_levels = sorted(set(pivots_high + psychological['resistance'] + volume_levels['resistance']))[-5:]
-        support_levels = sorted(set(pivots_low + psychological['support'] + volume_levels['support']))[-5:]
+        # Combinar todos los niveles y clasificarlos según el precio actual:
+        # todo nivel por debajo del precio es soporte y por encima es resistencia
+        # (un mínimo antiguo que el precio ya perforó pasa a ser resistencia).
+        candidates = set(pivots_high + pivots_low
+                         + psychological['resistance'] + psychological['support']
+                         + volume_levels['resistance'] + volume_levels['support'])
+        candidates = {float(l) for l in candidates if pd.notna(l) and l > 0}
+        
+        # Los 5 más cercanos a cada lado, del más cercano al más lejano
+        support_levels = sorted((l for l in candidates if l < current_price), reverse=True)[:5]
+        resistance_levels = sorted(l for l in candidates if l > current_price)[:5]
         
         return support_levels, resistance_levels
     
@@ -187,7 +202,9 @@ class BounceStrategy:
     def _find_psychological_levels(self, price):
         """Encuentra niveles psicológicos (números redondos)"""
         # Redondear a diferentes magnitudes
-        magnitude = 10 ** (len(str(int(price))) - 2)
+        if not price or price <= 0 or not np.isfinite(price):
+            return {'resistance': [], 'support': []}
+        magnitude = 10 ** (int(np.floor(np.log10(price))) - 1)
         
         psychological_levels = []
         for multiplier in [0.5, 1, 2, 5, 10]:
@@ -204,9 +221,12 @@ class BounceStrategy:
     
     def _find_volume_levels(self, df):
         """Encuentra niveles con alto volumen histórico"""
+        if df['Volume'].fillna(0).sum() <= 0 or df['Close'].nunique() < 2:
+            return {'resistance': [], 'support': []}  # p. ej. forex sin volumen
+        
         # Agrupar precios en bins y sumar volumen
         price_bins = pd.cut(df['Close'], bins=50)
-        volume_by_price = df.groupby(price_bins)['Volume'].sum()
+        volume_by_price = df.groupby(price_bins, observed=False)['Volume'].sum()
         
         # Tomar los 5 niveles con mayor volumen
         top_volume_levels = volume_by_price.nlargest(5)
@@ -223,18 +243,16 @@ class BounceStrategy:
         }
     
     def _is_near_level(self, price, levels, tolerance=0.005):
-        """Verifica si el precio está cerca de algún nivel (0.5% por defecto)"""
+        """Devuelve el nivel MÁS CERCANO si está a menos de `tolerance` (0.5% por defecto)"""
+        best = None
         for level in levels:
-            # Evitar división por cero
-            if level == 0:
+            if not level:
                 continue
-            
-            if abs(price - level) / level <= tolerance:
-                return {
-                    'is_near': True,
-                    'level': level,
-                    'distance_pct': abs(price - level) / level * 100
-                }
+            distance = abs(price - level) / level
+            if distance <= tolerance and (best is None or distance < best[1]):
+                best = (level, distance)
+        if best:
+            return {'is_near': True, 'level': best[0], 'distance_pct': best[1] * 100}
         return {'is_near': False, 'level': None, 'distance_pct': None}
     
     def _analyze_volume_psychology(self, df, window=20):

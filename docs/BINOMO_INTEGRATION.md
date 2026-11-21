@@ -103,7 +103,7 @@ El dashboard automáticamente usa Binomo como fallback:
 
 1. **Inicio del dashboard:**
 ```bash
-python3 dashboard.py
+python3 run_gui.py
 ```
 
 2. **Indicador visual:** Las tarjetas muestran 🟣 cuando usan Binomo

@@ -25,85 +25,32 @@ Sistema profesional de análisis técnico con **agregación multi-fuente de dato
 ## 📂 Estructura del Proyecto
 
 ```
-coin/
-├── main.py                 # Punto de entrada principal
-├── run_gui.py             # Inicio rápido dashboard web
-├── run_dashboard.py       # Dashboard web (alternativo)
-├── requirements.txt       # Dependencias del proyecto
-├── README.md             # Esta documentación
-├── .gitignore           # Archivos ignorados por git
+Coin-/
+├── iniciar.command        # ⭐ Doble clic (Mac): instala todo e inicia el dashboard
+├── run_gui.py             # Inicia el dashboard web (abre el navegador)
+├── main.py                # Menú: dashboard o interfaz de terminal
+├── requirements.txt       # Dependencias
+├── .env.example           # Plantilla de configuración (cópiala a .env)
 │
-├── config/              # ✨ NUEVO: Configuración
-│   ├── broker_apis.py          # Config de 7 APIs financieras
-│   ├── settings.py             # Configuración principal
-│   └── configurar_telegram.py  # Setup de Telegram
+├── config/
+│   ├── broker_apis.py     # API keys opcionales (Alpha Vantage, Finnhub...)
+│   └── settings.py        # Parámetros de indicadores y señales
 │
-├── src/                 # Código fuente principal
-│   ├── __init__.py
-│   ├── core/           # Módulos principales
-│   │   ├── trading_app.py      # App de terminal
-│   │   ├── trading_signals.py  # Motor de señales
-│   │   └── live_trading.py     # Trading en vivo
-│   │
-│   ├── indicators/     # Indicadores técnicos
-│   │   ├── candle_patterns.py      # Patrones de velas
-│   │   ├── technical_indicators.py # RSI, MACD, etc.
-│   │   └── trend_detector.py       # Detector de tendencias
-│   │
-│   ├── strategies/     # Estrategias de trading
-│   │   └── bounce_strategy.py  # Estrategia de rebotes
-│   │
-│   ├── data_sources/   # ✨ MEJORADO: Fuentes de datos
-│   │   ├── market_data_sources.py   # Yahoo Finance, etc.
-│   │   ├── hybrid_data_source.py    # Orchestrator principal
-│   │   ├── web_scraper.py           # 6 crypto exchanges
-│   │   ├── binomo_scraper.py        # Scraper Binomo
-│   │   ├── multi_broker_client.py   # ✨ NUEVO: Cliente multi-API
-│   │   └── price_aggregator.py      # ✨ NUEVO: Agregación inteligente
-│   │
-│   ├── gui/            # Interfaz gráfica
-│   │   ├── trading_gui.py  # GUI principal
-│   │   └── dashboard.py    # Dashboard web (mejorado)
-│   │
-│   └── webhooks/       # Webhooks y notificaciones
-│       ├── webhook_notifier.py  # Notificador
-│       ├── webhook_config.py    # Configuración
-│       └── setup_webhooks.py    # Setup webhooks
+├── src/
+│   ├── core/              # trading_app (terminal), trading_signals, live_trading
+│   ├── indicators/        # RSI, MACD, Bollinger, ATR, ADX, patrones de velas, tendencia
+│   ├── strategies/        # bounce_strategy.py (estrategia de rebotes)
+│   ├── data_sources/      # exchanges (ccxt), yfinance, multi-broker, agregador, Binomo
+│   ├── gui/dashboard.py   # Servidor web Flask + API
+│   ├── trading/           # Bot Selenium (desactivado por defecto)
+│   ├── webhooks/          # Alertas Telegram/Discord/Slack
+│   └── env_loader.py      # Lee el archivo .env
 │
-├── docs/               # ✨ NUEVO: Documentación
-│   ├── MULTI_BROKER_SETUP.md    # Guía multi-broker
-│   ├── SISTEMA_COMPLETO.md      # Resumen completo
-│   ├── WEB_SCRAPING_GUIDE.md    # Guía de scraping
-│   └── WEBHOOK_GUIDE.md         # Guía de webhooks
-│
-├── examples/           # Ejemplos de uso
-│   ├── quick_start.py          # Inicio rápido
-│   ├── ejemplo_rebotes.py      # Ejemplo rebotes
-│   ├── ejemplos_avanzados.py   # Ejemplos avanzados
-│   └── ...
-│
-├── tests/              # Tests unitarios
-│   ├── test_multi_broker.py    # ✨ NUEVO: Test multi-broker
-│   └── test_exchanges.py       # Test exchanges
-````
-│   ├── test_example.py
-│   └── test_telegram.py
-│
-├── docs/               # Documentación
-│   ├── README.md
-│   ├── RESUMEN_PROYECTO.md
-│   ├── ESTRATEGIA_REBOTES.md
-│   ├── GUI_README.md
-│   ├── GUIA_COMPLETA_GUI.md
-│   ├── MODO_TIEMPO_REAL.md
-│   ├── MONITOREO_AUTOMATICO.md
-│   ├── WEBHOOK_GUIDE.md
-│   ├── WEB_SCRAPING_GUIDE.md
-│   ├── BINOMO_INTEGRATION.md
-│   └── ... (más documentación)
-│
-└── templates/          # Templates HTML
-    └── dashboard.html
+├── templates/             # Páginas HTML del dashboard
+├── tests/                 # Tests automáticos (sin red)
+├── scripts/               # Comprobaciones manuales de conexión (requieren internet)
+├── examples/              # Ejemplos de uso desde código
+└── docs/                  # Guías
 ```
 
 ## 🔐 Configuración (archivo `.env`)
@@ -131,47 +78,28 @@ python3 -m unittest discover -s tests -v
 
 ## 🚀 Inicio Rápido
 
-### Instalación
+### Opción A — Mac, sin terminal (recomendado)
+
+Haz **doble clic en `iniciar.command`**. La primera vez crea un entorno virtual
+(`.venv`), instala las dependencias (tarda unos minutos) y abre el dashboard en el
+navegador. Las siguientes veces arranca directamente.
+
+> Si macOS dice que no puede abrirlo: clic derecho → **Abrir** → **Abrir**.
+> Si dice "permiso denegado", abre Terminal en la carpeta y ejecuta `chmod +x iniciar.command`.
+
+### Opción B — Terminal
 
 ```bash
-# 1. Clonar el repositorio
-git clone <tu-repositorio>
-cd coin
-
-# 2. Instalar dependencias
+cd ~/Documents/Coin-
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-
-# 3. (Opcional pero RECOMENDADO) Configurar API Keys
-# Edita config/broker_apis.py con tus claves API
-# Ver MULTI_BROKER_SETUP.md para más detalles
-nano config/broker_apis.py
+python3 run_gui.py          # dashboard web → se abre http://localhost:8080
+# o
+python3 main.py             # menú: dashboard o interfaz de terminal
 ```
 
-### Uso Básico
-
-**Opción 1: Dashboard Web (Recomendado) 🌟**
-```bash
-python3 dashboard.py
-```
-Abre tu navegador en: `http://localhost:8080`
-
-**Opción 2: Test Rápido del Sistema Multi-Broker**
-```bash
-python3 test_multi_broker.py
-```
-
-**Opción 3: Uso Programático**
-```python
-from src.data_sources.hybrid_data_source import HybridDataSource
-
-ds = HybridDataSource()
-
-# Obtener precio agregado de múltiples fuentes
-result = ds.get_aggregated_price('AAPL')
-print(f"Precio: ${result['price']:.2f}")
-print(f"Confianza: {result['confidence']:.1%} - {result['quality']}")
-print(f"Fuentes: {result['sources_used']}")
-```
+Si el puerto 8080 está ocupado, `run_gui.py` usa automáticamente el siguiente libre.
 
 ## 🎯 Características Principales
 
@@ -207,19 +135,12 @@ print(f"Fuentes: {result['sources_used']}")
 
 ## 📚 Documentación
 
-### Documentación Principal
-- **[MULTI_BROKER_SETUP.md](MULTI_BROKER_SETUP.md)** - 🌟 Guía completa del sistema multi-broker
-- **[SISTEMA_COMPLETO.md](SISTEMA_COMPLETO.md)** - Resumen del sistema completo
-- [WEB_SCRAPING_GUIDE.md](WEB_SCRAPING_GUIDE.md) - Guía de web scraping
-- [WEBHOOK_GUIDE.md](WEBHOOK_GUIDE.md) - Configuración de webhooks
-- [ESTRATEGIA_REBOTES.md](ESTRATEGIA_REBOTES.md) - Estrategia de trading
-
-### Documentación Adicional
-Consulta la carpeta `docs/` para más documentación:
-- Modo tiempo real
-- Monitoreo automático
-- Integración con Binomo
-- GUI completa
+En la carpeta `docs/`:
+- [MULTI_BROKER_SETUP.md](docs/MULTI_BROKER_SETUP.md) — sistema multi-broker y API keys
+- [ESTRATEGIA_REBOTES.md](docs/ESTRATEGIA_REBOTES.md) — estrategia de trading
+- [WEBHOOK_GUIDE.md](docs/WEBHOOK_GUIDE.md) — alertas por Telegram/Discord/Slack
+- [MONITOREO_AUTOMATICO.md](docs/MONITOREO_AUTOMATICO.md), [MODO_TIEMPO_REAL.md](docs/MODO_TIEMPO_REAL.md)
+- [GUIA_COMPLETA_GUI.md](docs/GUIA_COMPLETA_GUI.md), [WEB_SCRAPING_GUIDE.md](docs/WEB_SCRAPING_GUIDE.md), [BINOMO_INTEGRATION.md](docs/BINOMO_INTEGRATION.md)
 
 ## 🔧 Configuración
 
@@ -228,7 +149,7 @@ Solo requiere las dependencias instaladas. Usa yfinance y exchanges gratuitos.
 
 ```bash
 # Ya funciona después de pip install -r requirements.txt
-python3 dashboard.py
+python3 run_gui.py
 ```
 
 **Confianza típica**: 
@@ -252,65 +173,43 @@ FINNHUB_API_KEY = "TU_CLAVE_AQUI"
 - Crypto: 80-90% (Excellent) ⭐
 - Stocks/Forex: 70-85% (Good-Excellent) ⭐
 
-Ver [MULTI_BROKER_SETUP.md](MULTI_BROKER_SETUP.md) para configuración completa.
+Ver [MULTI_BROKER_SETUP.md](docs/MULTI_BROKER_SETUP.md) para configuración completa.
 
 ## 📝 Ejemplos de Uso
-
-### Test del Sistema Multi-Broker
-```bash
-python3 test_multi_broker.py
-```
 
 ### Desde Python
 ```python
 from src.data_sources.hybrid_data_source import HybridDataSource
+from src.indicators.technical_indicators import calculate_adaptive_indicators
+from src.strategies.bounce_strategy import analyze_bounce_opportunity
 
 ds = HybridDataSource()
-
-# Precio agregado con calidad
-result = ds.get_aggregated_price('AAPL')
-
-# Datos históricos
-df = ds.get_historical_data('BTC-USD', '5m')
-
-# Análisis completo
-from src.strategies.bounce_strategy import analyze_bounce_opportunity
-analysis = analyze_bounce_opportunity(df, 'BTC-USD')
+df = ds.get_live_data('BTC-USD', '5m')
+df = calculate_adaptive_indicators(df, '5m')
+analysis = analyze_bounce_opportunity(df, interval='5m')
+print(analysis['signal'], analysis['confidence'])
 ```
 
-### Dashboard API
+### API del dashboard
 ```bash
-# Precio con calidad
+curl http://localhost:8080/api/health
+curl "http://localhost:8080/api/analyze/BTC-USD?interval=5m"
 curl http://localhost:8080/api/price-quality/AAPL
-
-# Estadísticas de brokers
-curl http://localhost:8080/api/broker-stats
-
-# Análisis completo
-curl http://localhost:8080/api/analyze/BTC-USD?interval=5m
 ```
 
 ## 🧪 Tests
 
 ```bash
-# Test sistema multi-broker
-python3 test_multi_broker.py
-
-# Test exchanges
-python3 test_exchanges.py
+python3 -m unittest discover -s tests -v   # tests automáticos (sin internet)
+python3 scripts/check_exchanges.py         # comprueba conexión con exchanges
+python3 scripts/check_multi_broker.py      # comprueba el sistema multi-broker
 ```
-
-## 📦 Dependencias
-
-- **yfinance**: Datos de mercado
-- **pandas**: Análisis de datos
-- **numpy**: Cálculos numéricos
-- **matplotlib**: Gráficos
-- **colorama**: Colores en terminal
 
 ## ⚠️ Disclaimer
 
-Este sistema es para fines educativos y de investigación. No constituye asesoramiento financiero. Opera bajo tu propio riesgo.
+Este sistema es para fines educativos y de investigación. No constituye asesoramiento
+financiero. La estrategia no está validada con backtesting: no operes con dinero real
+basándote solo en sus señales.
 
 ## 📄 Licencia
 

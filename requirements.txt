@@ -1,14 +1,12 @@
-yfinance>=0.2.32
-pandas>=2.2.0
-numpy>=1.26.0
-colorama>=0.4.6
-matplotlib>=3.8.0
+yfinance>=0.2.40
+pandas>=2.0
+numpy>=1.24
+requests>=2.31.0
 flask>=3.0.0
 flask-cors>=4.0.0
-requests>=2.31.0
 ccxt>=4.0.0
 beautifulsoup4>=4.12.0
-lxml>=4.9.0
+colorama>=0.4.6
 
 # Opcional: solo para el bot de trading web (src/trading/web_trader_bot.py)
 # selenium>=4.15.0

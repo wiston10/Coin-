@@ -5,7 +5,7 @@ Script de prueba para el sistema multi-broker y agregación de precios
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.data_sources.hybrid_data_source import HybridDataSource
 

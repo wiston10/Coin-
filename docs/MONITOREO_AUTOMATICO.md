@@ -25,7 +25,7 @@ python3 configurar_telegram.py
 ### 2. Abre el Dashboard
 
 ```bash
-python3 dashboard.py
+python3 run_gui.py
 ```
 
 Abre en tu navegador: http://127.0.0.1:5000
@@ -162,7 +162,7 @@ def monitor_asset_loop(symbol, interval='5m'):
 
 **1. Inicio de sesión (9:00 AM)**
 ```bash
-python3 dashboard.py
+python3 run_gui.py
 ```
 
 **2. Abrir dashboard en navegador**
@@ -304,7 +304,7 @@ Si tienes problemas:
 1. **Revisa logs**: Terminal del dashboard muestra errores
 2. **Verifica configuración**: `python3 setup_webhooks.py`
 3. **Prueba webhook**: Endpoint `/api/webhooks/test`
-4. **Reinicia dashboard**: `Ctrl+C` y vuelve a ejecutar `python3 dashboard.py`
+4. **Reinicia dashboard**: `Ctrl+C` y vuelve a ejecutar `python3 run_gui.py`
 
 ---
 

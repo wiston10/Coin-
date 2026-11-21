@@ -197,8 +197,12 @@ class TrendDetector:
         support_levels = cluster_levels(support_levels)
         
         # Retornar los niveles más relevantes
-        resistance_levels = sorted(resistance_levels, reverse=True)[:num_levels]
-        support_levels = sorted(support_levels, reverse=True)[:num_levels]
+        # Clasificar por posición respecto al precio actual y quedarse con los
+        # niveles más cercanos (antes se tomaban los más altos de cada lista)
+        price = df['Close'].iloc[-1]
+        levels = {float(l) for l in resistance_levels + support_levels if pd.notna(l)}
+        resistance_levels = sorted(l for l in levels if l > price)[:num_levels]
+        support_levels = sorted((l for l in levels if l < price), reverse=True)[:num_levels]
         
         return support_levels, resistance_levels
     
@@ -207,13 +211,12 @@ class TrendDetector:
         """
         Verifica si el precio actual está cerca de un nivel de soporte o resistencia
         """
-        for support in support_levels:
-            if abs(current_price - support) / support < tolerance:
-                return 'NEAR_SUPPORT', support
-        
-        for resistance in resistance_levels:
-            if abs(current_price - resistance) / resistance < tolerance:
-                return 'NEAR_RESISTANCE', resistance
+        candidates = [(abs(current_price - l) / l, 'NEAR_SUPPORT', l) for l in support_levels if l] + \
+                     [(abs(current_price - l) / l, 'NEAR_RESISTANCE', l) for l in resistance_levels if l]
+        candidates = [c for c in candidates if c[0] < tolerance]
+        if candidates:
+            _, kind, level = min(candidates)  # el nivel más cercano gana
+            return kind, level
         
         return 'NONE', None
     

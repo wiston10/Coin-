@@ -132,7 +132,7 @@ Edita las secciones que necesites (Discord, Telegram, etc.) con tus URLs y token
 ### Paso 4: Reiniciar dashboard
 
 ```bash
-python3 dashboard.py
+python3 run_gui.py
 ```
 
 El sistema detectará automáticamente tu configuración.

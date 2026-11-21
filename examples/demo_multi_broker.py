@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 # Agregar el directorio raíz al path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.data_sources.hybrid_data_source import HybridDataSource
 
@@ -121,7 +121,7 @@ def main():
     print("\n📝 Próximos pasos:")
     print("   1. Agrega API keys en config/broker_apis.py para mejorar la precisión")
     print("   2. Lee MULTI_BROKER_SETUP.md para configuración completa")
-    print("   3. Inicia el dashboard: python3 dashboard.py")
+    print("   3. Inicia el dashboard: python3 run_gui.py")
     print("   4. Explora los endpoints de la API REST")
     
     print("\n🌐 Endpoints disponibles:")
